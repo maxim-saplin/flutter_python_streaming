@@ -19,23 +19,26 @@ const HeightMapRequest$json = {
   '2': [
     {'1': 'width', '3': 1, '4': 1, '5': 5, '10': 'width'},
     {'1': 'height', '3': 2, '4': 1, '5': 5, '10': 'height'},
+    {'1': 'threshold', '3': 3, '4': 1, '5': 5, '10': 'threshold'},
+    {'1': 'position', '3': 4, '4': 1, '5': 2, '10': 'position'},
   ],
 };
 
 /// Descriptor for `HeightMapRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List heightMapRequestDescriptor = $convert.base64Decode(
     'ChBIZWlnaHRNYXBSZXF1ZXN0EhQKBXdpZHRoGAEgASgFUgV3aWR0aBIWCgZoZWlnaHQYAiABKA'
-    'VSBmhlaWdodA==');
+    'VSBmhlaWdodBIcCgl0aHJlc2hvbGQYAyABKAVSCXRocmVzaG9sZBIaCghwb3NpdGlvbhgEIAEo'
+    'AlIIcG9zaXRpb24=');
 
 @$core.Deprecated('Use heightMapResponseDescriptor instead')
 const HeightMapResponse$json = {
   '1': 'HeightMapResponse',
   '2': [
-    {'1': 'height_map', '3': 1, '4': 3, '5': 2, '10': 'heightMap'},
+    {'1': 'height_map', '3': 1, '4': 3, '5': 5, '10': 'heightMap'},
   ],
 };
 
 /// Descriptor for `HeightMapResponse`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List heightMapResponseDescriptor = $convert.base64Decode(
-    'ChFIZWlnaHRNYXBSZXNwb25zZRIdCgpoZWlnaHRfbWFwGAEgAygCUgloZWlnaHRNYXA=');
+    'ChFIZWlnaHRNYXBSZXNwb25zZRIdCgpoZWlnaHRfbWFwGAEgAygFUgloZWlnaHRNYXA=');
 

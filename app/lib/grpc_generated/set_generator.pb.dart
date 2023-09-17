@@ -18,6 +18,8 @@ class HeightMapRequest extends $pb.GeneratedMessage {
   factory HeightMapRequest({
     $core.int? width,
     $core.int? height,
+    $core.int? threshold,
+    $core.double? position,
   }) {
     final $result = create();
     if (width != null) {
@@ -25,6 +27,12 @@ class HeightMapRequest extends $pb.GeneratedMessage {
     }
     if (height != null) {
       $result.height = height;
+    }
+    if (threshold != null) {
+      $result.threshold = threshold;
+    }
+    if (position != null) {
+      $result.position = position;
     }
     return $result;
   }
@@ -35,6 +43,8 @@ class HeightMapRequest extends $pb.GeneratedMessage {
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'HeightMapRequest', createEmptyInstance: create)
     ..a<$core.int>(1, _omitFieldNames ? '' : 'width', $pb.PbFieldType.O3)
     ..a<$core.int>(2, _omitFieldNames ? '' : 'height', $pb.PbFieldType.O3)
+    ..a<$core.int>(3, _omitFieldNames ? '' : 'threshold', $pb.PbFieldType.O3)
+    ..a<$core.double>(4, _omitFieldNames ? '' : 'position', $pb.PbFieldType.OF)
     ..hasRequiredFields = false
   ;
 
@@ -59,6 +69,7 @@ class HeightMapRequest extends $pb.GeneratedMessage {
   static HeightMapRequest getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<HeightMapRequest>(create);
   static HeightMapRequest? _defaultInstance;
 
+  /// Width in dots
   @$pb.TagNumber(1)
   $core.int get width => $_getIZ(0);
   @$pb.TagNumber(1)
@@ -68,6 +79,7 @@ class HeightMapRequest extends $pb.GeneratedMessage {
   @$pb.TagNumber(1)
   void clearWidth() => clearField(1);
 
+  /// Height in dots
   @$pb.TagNumber(2)
   $core.int get height => $_getIZ(1);
   @$pb.TagNumber(2)
@@ -76,12 +88,32 @@ class HeightMapRequest extends $pb.GeneratedMessage {
   $core.bool hasHeight() => $_has(1);
   @$pb.TagNumber(2)
   void clearHeight() => clearField(2);
+
+  /// Max number of iterations before escaping, same as max height value -1
+  @$pb.TagNumber(3)
+  $core.int get threshold => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set threshold($core.int v) { $_setSignedInt32(2, v); }
+  @$pb.TagNumber(3)
+  $core.bool hasThreshold() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearThreshold() => clearField(3);
+
+  /// Current rotation/shape, period is 1.0, 0.0 gives same result as 1.0, 2.0 and on
+  @$pb.TagNumber(4)
+  $core.double get position => $_getN(3);
+  @$pb.TagNumber(4)
+  set position($core.double v) { $_setFloat(3, v); }
+  @$pb.TagNumber(4)
+  $core.bool hasPosition() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearPosition() => clearField(4);
 }
 
 /// Define the response message
 class HeightMapResponse extends $pb.GeneratedMessage {
   factory HeightMapResponse({
-    $core.Iterable<$core.double>? heightMap,
+    $core.Iterable<$core.int>? heightMap,
   }) {
     final $result = create();
     if (heightMap != null) {
@@ -94,7 +126,7 @@ class HeightMapResponse extends $pb.GeneratedMessage {
   factory HeightMapResponse.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'HeightMapResponse', createEmptyInstance: create)
-    ..p<$core.double>(1, _omitFieldNames ? '' : 'heightMap', $pb.PbFieldType.KF)
+    ..p<$core.int>(1, _omitFieldNames ? '' : 'heightMap', $pb.PbFieldType.K3)
     ..hasRequiredFields = false
   ;
 
@@ -120,7 +152,7 @@ class HeightMapResponse extends $pb.GeneratedMessage {
   static HeightMapResponse? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $core.List<$core.double> get heightMap => $_getList(0);
+  $core.List<$core.int> get heightMap => $_getList(0);
 }
 
 

@@ -2,16 +2,23 @@ syntax = "proto3";
 
 service JuliaSetGeneratorService {
     // Accepts Width and Height parameters
-    rpc GetHeightMap(HeightMapRequest) returns (HeightMapResponse) {}
+    rpc GetSetAsHeightMap(HeightMapRequest) returns (HeightMapResponse) {}
 }
 
 // Define the request message
 message HeightMapRequest {
+    // Width in dots
     int32 width = 1;
+    // Height in dots
     int32 height = 2;
+    // Max number of iterations before escaping, same as max height value -1
+    int32 threshold = 3;
+    // Current rotation/shape, period is 1.0, 0.0 gives same result as 1.0, 2.0 and on
+    float position = 4;
 }
 
 // Define the response message
 message HeightMapResponse {
-    repeated float height_map = 1;
+    // SInce there're no multi-dimensional arrays in protobuf, row by row are returned, i.e. there will be HeightMapRequest.height rows
+    repeated int32 height_map = 1;
 }

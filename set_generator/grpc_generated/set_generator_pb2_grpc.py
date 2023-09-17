@@ -14,8 +14,8 @@ class JuliaSetGeneratorServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.GetHeightMap = channel.unary_unary(
-                '/JuliaSetGeneratorService/GetHeightMap',
+        self.GetSetAsHeightMap = channel.unary_unary(
+                '/JuliaSetGeneratorService/GetSetAsHeightMap',
                 request_serializer=set__generator__pb2.HeightMapRequest.SerializeToString,
                 response_deserializer=set__generator__pb2.HeightMapResponse.FromString,
                 )
@@ -24,7 +24,7 @@ class JuliaSetGeneratorServiceStub(object):
 class JuliaSetGeneratorServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def GetHeightMap(self, request, context):
+    def GetSetAsHeightMap(self, request, context):
         """Accepts Width and Height parameters
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -34,8 +34,8 @@ class JuliaSetGeneratorServiceServicer(object):
 
 def add_JuliaSetGeneratorServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'GetHeightMap': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetHeightMap,
+            'GetSetAsHeightMap': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetSetAsHeightMap,
                     request_deserializer=set__generator__pb2.HeightMapRequest.FromString,
                     response_serializer=set__generator__pb2.HeightMapResponse.SerializeToString,
             ),
@@ -50,7 +50,7 @@ class JuliaSetGeneratorService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def GetHeightMap(request,
+    def GetSetAsHeightMap(request,
             target,
             options=(),
             channel_credentials=None,
@@ -60,7 +60,7 @@ class JuliaSetGeneratorService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/JuliaSetGeneratorService/GetHeightMap',
+        return grpc.experimental.unary_unary(request, target, '/JuliaSetGeneratorService/GetSetAsHeightMap',
             set__generator__pb2.HeightMapRequest.SerializeToString,
             set__generator__pb2.HeightMapResponse.FromString,
             options, channel_credentials,

@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13set_generator.proto\"1\n\x10HeightMapRequest\x12\r\n\x05width\x18\x01 \x01(\x05\x12\x0e\n\x06height\x18\x02 \x01(\x05\"\'\n\x11HeightMapResponse\x12\x12\n\nheight_map\x18\x01 \x03(\x02\x32S\n\x18JuliaSetGeneratorService\x12\x37\n\x0cGetHeightMap\x12\x11.HeightMapRequest\x1a\x12.HeightMapResponse\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13set_generator.proto\"V\n\x10HeightMapRequest\x12\r\n\x05width\x18\x01 \x01(\x05\x12\x0e\n\x06height\x18\x02 \x01(\x05\x12\x11\n\tthreshold\x18\x03 \x01(\x05\x12\x10\n\x08position\x18\x04 \x01(\x02\"\'\n\x11HeightMapResponse\x12\x12\n\nheight_map\x18\x01 \x03(\x05\x32X\n\x18JuliaSetGeneratorService\x12<\n\x11GetSetAsHeightMap\x12\x11.HeightMapRequest\x1a\x12.HeightMapResponse\"\x00\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -22,9 +22,9 @@ if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
   _globals['_HEIGHTMAPREQUEST']._serialized_start=23
-  _globals['_HEIGHTMAPREQUEST']._serialized_end=72
-  _globals['_HEIGHTMAPRESPONSE']._serialized_start=74
-  _globals['_HEIGHTMAPRESPONSE']._serialized_end=113
-  _globals['_JULIASETGENERATORSERVICE']._serialized_start=115
-  _globals['_JULIASETGENERATORSERVICE']._serialized_end=198
+  _globals['_HEIGHTMAPREQUEST']._serialized_end=109
+  _globals['_HEIGHTMAPRESPONSE']._serialized_start=111
+  _globals['_HEIGHTMAPRESPONSE']._serialized_end=150
+  _globals['_JULIASETGENERATORSERVICE']._serialized_start=152
+  _globals['_JULIASETGENERATORSERVICE']._serialized_end=240
 # @@protoc_insertion_point(module_scope)

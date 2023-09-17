@@ -1,0 +1,1 @@
+./starter-kit/prepare-sources.sh --proto '/private/var/user/src/flutter_python_streaming/set_generator.proto' --flutterDir '/private/var/user/src/flutter_python_streaming/app' --pythonDir '/private/var/user/src/flutter_python_streaming/set_generator'

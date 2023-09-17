@@ -35,7 +35,7 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
   }
 
-  List<double> numList = [];
+  List<int> numList = [];
 
   @override
   Widget build(BuildContext context) {
@@ -113,7 +113,8 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
                 onPressed: () {
                   //setState(() => randomIntegers.sort());
                   JuliaSetGeneratorServiceClient(getClientChannel())
-                      .getHeightMap(HeightMapRequest(width: 24, height: 24))
+                      .getSetAsHeightMap(HeightMapRequest(
+                          width: 24, height: 24, threshold: 100, position: 0.5))
                       .then((p0) => setState(() {
                             numList = p0.heightMap;
                           }));
