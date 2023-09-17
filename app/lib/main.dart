@@ -1,9 +1,10 @@
-import 'dart:math';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:app/grpc_generated/client.dart';
 import 'package:app/grpc_generated/init_py.dart';
 import 'package:app/grpc_generated/init_py_native.dart';
+
+import 'grpc_generated/set_generator.pbgrpc.dart';
 
 Future<void> pyInitResult = Future(() => null);
 
@@ -34,8 +35,7 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
   }
 
-  List<int> randomIntegers =
-      List.generate(40, (index) => Random().nextInt(100));
+  List<double> numList = [];
 
   @override
   Widget build(BuildContext context) {
@@ -105,37 +105,24 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
               ),
               const SizedBox(height: 16),
               Text(
-                randomIntegers.join(', '),
+                numList.join(', '),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () {
-                  setState(() {
-                    randomIntegers =
-                        List.generate(40, (index) => Random().nextInt(100));
-                  });
-                },
-                style: ElevatedButton.styleFrom(
-                  minimumSize:
-                      const Size(140, 36), // Set minimum width to 120px
-                ),
-                child: const Text('Regenerate List'),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
                   //setState(() => randomIntegers.sort());
-                  NumberSortingServiceClient(getClientChannel())
-                      .sortNumbers(NumberArray(numbers: randomIntegers))
-                      .then(
-                          (p0) => setState(() => randomIntegers = p0.numbers));
+                  JuliaSetGeneratorServiceClient(getClientChannel())
+                      .getHeightMap(HeightMapRequest(width: 24, height: 24))
+                      .then((p0) => setState(() {
+                            numList = p0.heightMap;
+                          }));
                 },
                 style: ElevatedButton.styleFrom(
                   minimumSize:
                       const Size(140, 36), // Set minimum width to 120px
                 ),
-                child: const Text('Sort'),
+                child: const Text('Get Julia Set'),
               ),
             ],
           ),

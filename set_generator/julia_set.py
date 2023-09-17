@@ -5,19 +5,28 @@ from numba import jit
 
 class JuliaSetGeneratorService(set_generator_pb2_grpc.JuliaSetGeneratorService):
     def GetHeightMap(self, request, context):
-        height_map = GetSet(request.width, request.height)
-        return set_generator_pb2.HeightMapResponse(height_map=height_map)
+        # Example of debuging and fixing
+        # height_map = GetSet(request.width, request.height)
+        height_map = self.GetSet(request.width, request.height)
+
+        height, width = height_map.shape
+  
+        flattened = height_map.reshape(height * width)
+  
+        result = set_generator_pb2.HeightMapResponse(height_map=flattened.astype(np.float32).tolist())
+        return result
         
 
-    def GetSet(widthPoints, heightPoints):
+    def GetSet(self, widthPoints, heightPoints):
+        iter = 80
         start_time = time.time()  # start timing
         x_start, y_start = -2, -2  # an interesting region starts here
         width, height = 4, 4*widthPoints/heightPoints  # for 4 units up and right
 
 
         # real and imaginary axis
-        re = np.linspace(x_start, x_start + width, widthPoints / width )
-        im = np.linspace(y_start, y_start + height, heightPoints / height)
+        re = np.linspace(x_start, x_start + width, round(widthPoints / width) )
+        im = np.linspace(y_start, y_start + height, round(heightPoints / height))
 
         threshold = 100  # max allowed iterations
 
