@@ -1,0 +1,59 @@
+//
+//  Generated code. Do not modify.
+//  source: set_generator.proto
+//
+// @dart = 2.12
+
+// ignore_for_file: annotate_overrides, camel_case_types, comment_references
+// ignore_for_file: constant_identifier_names, library_prefixes
+// ignore_for_file: non_constant_identifier_names, prefer_final_fields
+// ignore_for_file: unnecessary_import, unnecessary_this, unused_import
+
+import 'dart:async' as $async;
+import 'dart:core' as $core;
+
+import 'package:grpc/service_api.dart' as $grpc;
+import 'package:protobuf/protobuf.dart' as $pb;
+
+import 'set_generator.pb.dart' as $0;
+
+export 'set_generator.pb.dart';
+
+@$pb.GrpcServiceName('JuliaSetGeneratorService')
+class JuliaSetGeneratorServiceClient extends $grpc.Client {
+  static final _$getHeightMap = $grpc.ClientMethod<$0.HeightMapRequest, $0.HeightMapResponse>(
+      '/JuliaSetGeneratorService/GetHeightMap',
+      ($0.HeightMapRequest value) => value.writeToBuffer(),
+      ($core.List<$core.int> value) => $0.HeightMapResponse.fromBuffer(value));
+
+  JuliaSetGeneratorServiceClient($grpc.ClientChannel channel,
+      {$grpc.CallOptions? options,
+      $core.Iterable<$grpc.ClientInterceptor>? interceptors})
+      : super(channel, options: options,
+        interceptors: interceptors);
+
+  $grpc.ResponseFuture<$0.HeightMapResponse> getHeightMap($0.HeightMapRequest request, {$grpc.CallOptions? options}) {
+    return $createUnaryCall(_$getHeightMap, request, options: options);
+  }
+}
+
+@$pb.GrpcServiceName('JuliaSetGeneratorService')
+abstract class JuliaSetGeneratorServiceBase extends $grpc.Service {
+  $core.String get $name => 'JuliaSetGeneratorService';
+
+  JuliaSetGeneratorServiceBase() {
+    $addMethod($grpc.ServiceMethod<$0.HeightMapRequest, $0.HeightMapResponse>(
+        'GetHeightMap',
+        getHeightMap_Pre,
+        false,
+        false,
+        ($core.List<$core.int> value) => $0.HeightMapRequest.fromBuffer(value),
+        ($0.HeightMapResponse value) => value.writeToBuffer()));
+  }
+
+  $async.Future<$0.HeightMapResponse> getHeightMap_Pre($grpc.ServiceCall call, $async.Future<$0.HeightMapRequest> request) async {
+    return getHeightMap(call, await request);
+  }
+
+  $async.Future<$0.HeightMapResponse> getHeightMap($grpc.ServiceCall call, $0.HeightMapRequest request);
+}

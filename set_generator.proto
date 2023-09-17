@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+service JuliaSetGeneratorService {
+    // Accepts Width and Height parameters
+    rpc GetHeightMap(HeightMapRequest) returns (HeightMapResponse) {}
+}
+
+// Define the request message
+message HeightMapRequest {
+    int32 width = 1;
+    int32 height = 2;
+}
+
+// Define the response message
+message HeightMapResponse {
+    repeated float height_map = 1;
+}
