@@ -3,8 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:app/grpc_generated/client.dart';
 import 'package:app/grpc_generated/init_py.dart';
 import 'package:app/grpc_generated/init_py_native.dart';
+import 'dart:math';
 
 import 'grpc_generated/set_generator.pbgrpc.dart';
+
+const width = 64;
+const height = 64;
+const threshold = 100;
+const position = 0.5;
 
 Future<void> pyInitResult = Future(() => null);
 
@@ -29,13 +35,28 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
     return super.didRequestAppExit();
   }
 
+  var widthPixels = 0;
+  var heightPixels = 0;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    widthPixels = (width *
+            WidgetsBinding
+                .instance.platformDispatcher.displays.first.devicePixelRatio)
+        .toInt();
+
+    heightPixels = (height *
+            WidgetsBinding
+                .instance.platformDispatcher.displays.first.devicePixelRatio)
+        .toInt();
   }
 
-  List<int> numList = [];
+  // List<int> numList = [];
+
+  bool ready = false;
+  List<int> values = [];
 
   @override
   Widget build(BuildContext context) {
@@ -92,7 +113,9 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
                       return Text('Error: ${snapshot.error}');
                     } else {
                       // When future completes, display a message saying that Python has been loaded
-                      // Set the text color of the Text widget to green
+                      Future(() => setState(() {
+                            ready = true;
+                          }));
                       return const Text(
                         'Python has been loaded',
                         style: TextStyle(
@@ -104,19 +127,34 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
                 ),
               ),
               const SizedBox(height: 16),
-              Text(
-                numList.join(', '),
-                textAlign: TextAlign.center,
+              SizedBox(
+                width: width.toDouble(),
+                height: height.toDouble(),
+                child: !ready || values.isEmpty
+                    ? const Text('Awating...')
+                    : CustomPaint(
+                        painter: HeightMapPainter(
+                            width: widthPixels,
+                            height: heightPixels,
+                            values: values)),
               ),
+              // Text(
+              //   numList.join(', '),
+              //   textAlign: TextAlign.center,
+              // ),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () {
                   //setState(() => randomIntegers.sort());
+                  setState(() {});
                   JuliaSetGeneratorServiceClient(getClientChannel())
                       .getSetAsHeightMap(HeightMapRequest(
-                          width: 24, height: 24, threshold: 100, position: 0.5))
+                          width: widthPixels,
+                          height: heightPixels,
+                          threshold: threshold,
+                          position: position))
                       .then((p0) => setState(() {
-                            numList = p0.heightMap;
+                            values = p0.heightMap;
                           }));
                 },
                 style: ElevatedButton.styleFrom(
@@ -131,4 +169,36 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
       ),
     );
   }
+}
+
+class HeightMapPainter extends CustomPainter {
+  final int width;
+  final int height;
+  final List<int> values;
+
+  HeightMapPainter(
+      {required this.width, required this.height, required this.values});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..strokeWidth = 1.0;
+
+    for (int x = 0; x < width; x++) {
+      for (int y = 0; y < height; y++) {
+        var iter = values[y * width + x] + 1;
+        // paint.color = Color.fromRGBO(iter, iter, iter, 1);
+        paint.color = Color.fromRGBO(
+            255 * (1 + cos(3.32 * log(iter))) ~/ 2,
+            255 * (1 + cos(0.774 * log(iter))) ~/ 2,
+            255 * (1 + cos(0.412 * log(iter))) ~/ 2,
+            1);
+        // Put pixel
+        canvas.drawPoints(PointMode.points,
+            <Offset>[Offset(x.toDouble(), y.toDouble())], paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(HeightMapPainter oldDelegate) => true;
 }

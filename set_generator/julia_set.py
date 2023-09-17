@@ -22,8 +22,10 @@ def _GetSetAsHeightMap(widthPoints: int, heightPoints: int, threshold: int, posi
     width, height = 4, 4*widthPoints/heightPoints  # for 4 units up and right
 
     # real and imaginary axis
-    re = np.linspace(x_start, x_start + round(widthPoints / width), widthPoints)
-    im = np.linspace(y_start, y_start + round(heightPoints / height), heightPoints)
+    re = np.linspace(x_start, x_start + width, widthPoints)
+    # rePixel = np.linspace(0, widthPoints, widthPoints)
+    im = np.linspace(y_start, y_start + height, heightPoints)
+    # imPixel = np.linspace(y_start, y_start + round(heightPoints / height), heightPoints)
 
     # we represent c as c = r*cos(a) + i*r*sin(a) = r*e^{i*a}
     r = 0.7
@@ -38,12 +40,12 @@ def _GetSetAsHeightMap(widthPoints: int, heightPoints: int, threshold: int, posi
     #     return X
     
     def get_julia_row_inplace(i, re, im, const_x, const_y, threshold):
-        for j in range(len(im)):
+        for j in range(heightPoints):
             result[i*widthPoints+j] = _check_in_julia_set(re, im[j], const_x, const_y, threshold)
 
     cx, cy = r * np.cos(a), r * np.sin(a)  # the initial c number
 
-    for i in range(len(re)):
+    for i in range(widthPoints):
         get_julia_row_inplace(i, re[i], im, cx, cy, threshold)
         
     elapsed_time = time.time() - start_time
