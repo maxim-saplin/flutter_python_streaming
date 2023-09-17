@@ -61,72 +61,14 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: Scaffold(
-        body: Container(
+        home: Scaffold(
+      body: Stack(alignment: Alignment.bottomCenter, children: [
+        Container(
           padding: const EdgeInsets.all(20),
           alignment: Alignment.center,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text.rich(
-                TextSpan(
-                  children: [
-                    const TextSpan(
-                      text: 'Using ',
-                    ),
-                    TextSpan(
-                      text: '$defaultHost:$defaultPort',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    TextSpan(
-                      text:
-                          ', ${localPyStartSkipped ? 'skipped launching local server' : 'launched local server'}',
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 50,
-                child:
-                    // Add FutureBuilder that awaits pyInitResult
-                    FutureBuilder<void>(
-                  future: pyInitResult,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Stack(
-                        children: [
-                          SizedBox(height: 4, child: LinearProgressIndicator()),
-                          Positioned.fill(
-                            child: Center(
-                              child: Text(
-                                'Loading Python...',
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    } else if (snapshot.hasError) {
-                      // If error is returned by the future, display an error message
-                      return Text('Error: ${snapshot.error}');
-                    } else {
-                      // When future completes, display a message saying that Python has been loaded
-                      Future(() => setState(() {
-                            ready = true;
-                          }));
-                      return const Text(
-                        'Python has been loaded',
-                        style: TextStyle(
-                          color: Colors.green,
-                        ),
-                      );
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(height: 16),
               SizedBox(
                 width: width.toDouble(),
                 height: height.toDouble(),
@@ -138,36 +80,90 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
                             height: heightPixels,
                             values: values)),
               ),
-              // Text(
-              //   numList.join(', '),
-              //   textAlign: TextAlign.center,
-              // ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  //setState(() => randomIntegers.sort());
-                  setState(() {});
-                  JuliaSetGeneratorServiceClient(getClientChannel())
-                      .getSetAsHeightMap(HeightMapRequest(
-                          width: widthPixels,
-                          height: heightPixels,
-                          threshold: threshold,
-                          position: position))
-                      .then((p0) => setState(() {
-                            values = p0.heightMap;
-                          }));
-                },
-                style: ElevatedButton.styleFrom(
-                  minimumSize:
-                      const Size(140, 36), // Set minimum width to 120px
-                ),
-                child: const Text('Get Julia Set'),
-              ),
             ],
           ),
         ),
-      ),
-    );
+        Padding(
+            padding: const EdgeInsets.all(10),
+            child: // Set the borderRadius property of the Container widget to make it rounded
+                Container(
+              width: 140,
+              height: 40,
+              padding: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                color: Colors.grey[300],
+              ),
+              child:
+                  Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                FutureBuilder<void>(
+                  future: pyInitResult,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 6));
+                    } else if (snapshot.hasError) {
+                      return Tooltip(
+                        message: 'Error: ${snapshot.error}',
+                        child: const Icon(
+                          Icons.circle,
+                          color: Colors.red,
+                        ),
+                      );
+                    } else {
+                      // When future completes, display a message saying that Python has been loaded
+                      Future(() => setState(() {
+                            ready = true;
+                          }));
+                      return Tooltip(
+                        richMessage: TextSpan(
+                          children: [
+                            const TextSpan(
+                              text: 'Using ',
+                            ),
+                            TextSpan(
+                              text: '$defaultHost:$defaultPort',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            TextSpan(
+                              text:
+                                  ', ${localPyStartSkipped ? 'skipped launching local server' : 'launched local server'}',
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.circle,
+                          color: Colors.green,
+                        ),
+                      );
+                    }
+                  },
+                ),
+                SizedBox(
+                    height: 30,
+                    child: IconButton(
+                      icon: const Icon(Icons.skip_next_rounded),
+                      onPressed: () {
+                        setState(() {});
+                        JuliaSetGeneratorServiceClient(getClientChannel())
+                            .getSetAsHeightMap(HeightMapRequest(
+                                width: widthPixels,
+                                height: heightPixels,
+                                threshold: threshold,
+                                position: position))
+                            .then((p0) => setState(() {
+                                  values = p0.heightMap;
+                                }));
+                      },
+                    ))
+              ]),
+            ))
+      ]),
+    ));
   }
 }
 

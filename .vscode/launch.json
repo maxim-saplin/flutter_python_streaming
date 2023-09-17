@@ -5,6 +5,17 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "app (release)",
+            "type": "dart",
+            "request": "launch",
+            "program": "app/lib/main.dart",
+            "toolArgs": [
+                "--dart-define",
+                "useRemote=true",
+              ],
+            "flutterMode": "release"
+        },
+        {
             "name": "app",
             "type": "dart",
             "request": "launch",
