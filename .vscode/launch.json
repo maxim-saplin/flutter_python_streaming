@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "app (release)",
+            "name": "app (remote server, release)",
             "type": "dart",
             "request": "launch",
             "program": "app/lib/main.dart",
@@ -16,7 +16,7 @@
             "flutterMode": "release"
         },
         {
-            "name": "app",
+            "name": "app (remote server)",
             "type": "dart",
             "request": "launch",
             "program": "app/lib/main.dart",
@@ -24,6 +24,12 @@
                 "--dart-define",
                 "useRemote=true",
               ],
+        },
+        {
+            "name": "app (bundled server)",
+            "type": "dart",
+            "request": "launch",
+            "program": "app/lib/main.dart",
         },
         {
             "name": "web app (remote server, auto start)",

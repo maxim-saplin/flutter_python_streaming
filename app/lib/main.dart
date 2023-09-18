@@ -1,11 +1,11 @@
-// ignore_for_file: sort_child_properties_last
-
+import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:app/grpc_generated/client.dart';
 import 'package:app/grpc_generated/init_py.dart';
 import 'package:app/grpc_generated/init_py_native.dart';
+import 'package:grpc/grpc.dart';
 import 'dart:math';
 import 'dart:ui' as ui;
 
@@ -30,7 +30,7 @@ class MainApp extends StatefulWidget {
   MainAppState createState() => MainAppState();
 }
 
-enum ViewStates { notReady, ready, loading }
+enum ScreenStates { notReady, ready, loading, animating }
 
 class MainAppState extends State<MainApp> with WidgetsBindingObserver {
   @override
@@ -44,6 +44,9 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
   String error = '';
   double lastWidth = 0;
   double lastHeight = 0;
+  ResponseStream<HeightMapResponse>? grpcStream;
+  ScreenStates screenState = ScreenStates.notReady;
+  List<int> heightValues = [];
 
   @override
   void initState() {
@@ -55,11 +58,8 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
     pyInitResult
         .onError(
             (error, stackTrace) => setState(() => error = error.toString()))
-        .whenComplete(() => setState(() => viewState = ViewStates.ready));
+        .whenComplete(() => setState(() => screenState = ScreenStates.ready));
   }
-
-  ViewStates viewState = ViewStates.notReady;
-  List<int> values = [];
 
   @override
   Widget build(BuildContext context) {
@@ -72,14 +72,11 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
               alignment: Alignment.center,
               children: [
                 _Fractals(
-                    ready: viewState == ViewStates.ready,
-                    values: values,
+                    values: heightValues,
                     width: lastWidth,
                     height: lastHeight,
-                    // width: 100,
-                    // height: 100,
                     pixelRatio: pixelRatio),
-                if (viewState == ViewStates.loading)
+                if (screenState == ScreenStates.loading)
                   const Positioned(
                       width: 20,
                       height: 20,
@@ -87,64 +84,111 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
                 Positioned(
                     top: 15,
                     child: Text(
-                        '${(lastWidth * pixelRatio).toInt()} x ${(lastHeight * pixelRatio).toInt()}')),
+                        '${(lastWidth * pixelRatio).toInt()} x ${(lastHeight * pixelRatio).toInt()} · ${position.toStringAsFixed(2)}')),
                 Positioned(
                     bottom: 15,
                     child: _BottomPanel(
-                      viewState: viewState,
+                      screenState: screenState,
                       error: error,
                       onOneFrame: () {
-                        setState(() {
-                          viewState = ViewStates.loading;
-                        });
-                        lastWidth = constraints.maxWidth;
-                        lastHeight = constraints.maxHeight;
+                        _prepBeforeGrpcCall(constraints, ScreenStates.loading);
                         JuliaSetGeneratorServiceClient(getClientChannel())
                             .getSetAsHeightMap(HeightMapRequest(
                                 width: (lastWidth * pixelRatio).toInt(),
                                 height: (lastHeight * pixelRatio).toInt(),
-                                // width: 100,
-                                // height: 100,
                                 threshold: threshold,
                                 position: position))
-                            .then((p0) => setState(() {
-                                  values = p0.heightMap;
-                                  if (p0.heightMap.length !=
+                            .then((value) => setState(() {
+                                  heightValues = value.heightMap;
+                                  if (value.heightMap.length !=
                                       (lastWidth * pixelRatio).toInt() *
                                           (lastHeight * pixelRatio).toInt()) {
-                                    throw 'Invalid length of height map';
+                                    _onGrpcCallError(
+                                        'Invalid length of height map',
+                                        context);
                                   }
                                   position += 0.05;
-                                  setState(() {
-                                    viewState = ViewStates.ready;
-                                  });
+                                  _setScreenState(ScreenStates.ready);
                                 }))
-                            .onError((error, stackTrace) {
-                          setState(() {
-                            viewState = ViewStates.ready;
-                          });
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content: Text('An error occured\n$error')));
-                        });
+                            .onError((error, stackTrace) =>
+                                _onGrpcCallError(error.toString(), context));
                       },
-                      onPlay: () {},
+                      onPlay: () {
+                        _prepBeforeGrpcCall(
+                            constraints, ScreenStates.animating);
+                        grpcStream =
+                            JuliaSetGeneratorServiceClient(getClientChannel())
+                                .getSetAsHeightMapStream(HeightMapRequest(
+                                    width: (lastWidth * pixelRatio).toInt(),
+                                    height: (lastHeight * pixelRatio).toInt(),
+                                    threshold: threshold,
+                                    position: position));
+
+                        grpcStream!.listen(
+                            (value) {
+                              heightValues = value.heightMap;
+                              if (value.heightMap.length !=
+                                  (lastWidth * pixelRatio).toInt() *
+                                      (lastHeight * pixelRatio).toInt()) {
+                                _onGrpcCallError(
+                                    'Invalid length of height map', context);
+                              }
+                              position = value.position;
+                              _setScreenState(ScreenStates.animating);
+                            },
+                            cancelOnError: true,
+                            onError: (error, stackTrace) {
+                              if (error is GrpcError && error.code == 1) {
+                                return; // grpc call canceled
+                              }
+                              _onGrpcCallError(error.toString(), context);
+                            });
+                      },
+                      onPause: () {
+                        grpcStream?.cancel();
+                        _setScreenState(ScreenStates.ready);
+                      },
                     ))
               ]),
         )));
+  }
+
+  void _setScreenState(ScreenStates state) {
+    setState(() {
+      screenState = state;
+    });
+  }
+
+  void _prepBeforeGrpcCall(BoxConstraints constraints, ScreenStates state) {
+    lastWidth = constraints.maxWidth;
+    lastHeight = constraints.maxHeight;
+    setState(() {
+      screenState = state;
+    });
+  }
+
+  void _onGrpcCallError(String error, BuildContext context) {
+    setState(() {
+      screenState = ScreenStates.ready;
+    });
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('An error occured\n$error')));
   }
 }
 
 class _BottomPanel extends StatelessWidget {
   const _BottomPanel(
-      {required this.viewState,
+      {required this.screenState,
       this.error = '',
       required this.onOneFrame,
-      required this.onPlay});
+      required this.onPlay,
+      required this.onPause});
 
-  final ViewStates viewState;
+  final ScreenStates screenState;
   final String error;
   final Function onOneFrame;
   final Function onPlay;
+  final Function onPause;
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +203,7 @@ class _BottomPanel extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                error.isEmpty && viewState == ViewStates.notReady
+                error.isEmpty && screenState == ScreenStates.notReady
                     ? const SizedBox(
                         height: 20,
                         width: 20,
@@ -171,9 +215,7 @@ class _BottomPanel extends StatelessWidget {
                               Icons.circle,
                               color: Colors.red,
                             ))
-                        :
-                        // When future completes, display a message saying that Python has been loaded
-                        Tooltip(
+                        : Tooltip(
                             richMessage: TextSpan(
                               children: [
                                 const TextSpan(
@@ -196,22 +238,24 @@ class _BottomPanel extends StatelessWidget {
                               color: Colors.green,
                             ))),
                 FloatingActionButton(
-                    child: const Icon(Icons.skip_next_rounded),
                     backgroundColor: Colors.white,
-                    foregroundColor:
-                        viewState == ViewStates.ready ? null : Colors.grey[200],
+                    foregroundColor: screenState == ScreenStates.ready
+                        ? null
+                        : Colors.grey[200],
                     tooltip: 'One frame',
-                    onPressed: viewState == ViewStates.ready
+                    onPressed: screenState == ScreenStates.ready
                         ? () => onOneFrame()
-                        : null),
+                        : null,
+                    child: const Icon(Icons.skip_next_rounded)),
                 FloatingActionButton(
-                    child: const Icon(Icons.play_arrow_rounded),
                     backgroundColor: Colors.white,
-                    foregroundColor:
-                        viewState == ViewStates.ready ? null : Colors.grey[200],
                     tooltip: 'Play animation',
-                    onPressed:
-                        viewState == ViewStates.ready ? () => onPlay() : null)
+                    onPressed: screenState == ScreenStates.animating
+                        ? () => onPause()
+                        : () => onPlay(),
+                    child: screenState == ScreenStates.animating
+                        ? const Icon(Icons.pause_rounded)
+                        : const Icon(Icons.play_arrow_rounded))
               ]),
         ));
   }
@@ -219,13 +263,11 @@ class _BottomPanel extends StatelessWidget {
 
 class _Fractals extends StatefulWidget {
   const _Fractals(
-      {required this.ready,
-      required this.values,
+      {required this.values,
       required this.width,
       required this.height,
       required this.pixelRatio});
 
-  final bool ready;
   final List<int> values;
   final double width;
   final double height;
@@ -244,19 +286,19 @@ class _FractalsState extends State<_Fractals> {
 
     if (oldWidget.height != widget.height ||
         oldWidget.width != widget.width ||
-        oldWidget.values.hashCode != widget.values.hashCode) {
-      if (image != null) {
-        image!.dispose();
-        image = null;
-      }
-
+        oldWidget.values != widget.values) {
       var pWidth = (widget.width * widget.pixelRatio).toInt();
       var pHeight = (widget.height * widget.pixelRatio).toInt();
 
       if (widget.values.isNotEmpty &&
           widget.values.length == pWidth * pHeight) {
-        getImage(pWidth, pHeight, widget.values)
-            .then((value) => setState(() => image = value));
+        getImage(pWidth, pHeight, widget.values).then((value) {
+          if (image != null) {
+            image!.dispose();
+            image = null;
+          }
+          setState(() => image = value);
+        });
       }
     }
   }
@@ -290,11 +332,9 @@ class _FractalsState extends State<_Fractals> {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-        width: widget.width.toDouble(),
-        height: widget.height.toDouble(),
-        child: widget.ready && image != null
-            ? RawImage(image: image)
-            : const Center(child: Text('Fractals will be displayed here...')));
+    return RawImage(
+        image: image,
+        width: widget.height.toDouble(),
+        height: widget.height.toDouble());
   }
 }

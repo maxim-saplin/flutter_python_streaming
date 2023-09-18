@@ -114,10 +114,14 @@ class HeightMapRequest extends $pb.GeneratedMessage {
 class HeightMapResponse extends $pb.GeneratedMessage {
   factory HeightMapResponse({
     $core.Iterable<$core.int>? heightMap,
+    $core.double? position,
   }) {
     final $result = create();
     if (heightMap != null) {
       $result.heightMap.addAll(heightMap);
+    }
+    if (position != null) {
+      $result.position = position;
     }
     return $result;
   }
@@ -127,6 +131,7 @@ class HeightMapResponse extends $pb.GeneratedMessage {
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'HeightMapResponse', createEmptyInstance: create)
     ..p<$core.int>(1, _omitFieldNames ? '' : 'heightMap', $pb.PbFieldType.K3)
+    ..a<$core.double>(2, _omitFieldNames ? '' : 'position', $pb.PbFieldType.OF)
     ..hasRequiredFields = false
   ;
 
@@ -151,8 +156,19 @@ class HeightMapResponse extends $pb.GeneratedMessage {
   static HeightMapResponse getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<HeightMapResponse>(create);
   static HeightMapResponse? _defaultInstance;
 
+  /// Since there're no multi-dimensional arrays in protobuf, row by row are returned, i.e. there will be HeightMapRequest.height rows
   @$pb.TagNumber(1)
   $core.List<$core.int> get heightMap => $_getList(0);
+
+  /// Position that was used during last generation
+  @$pb.TagNumber(2)
+  $core.double get position => $_getN(1);
+  @$pb.TagNumber(2)
+  set position($core.double v) { $_setFloat(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasPosition() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPosition() => clearField(2);
 }
 
 

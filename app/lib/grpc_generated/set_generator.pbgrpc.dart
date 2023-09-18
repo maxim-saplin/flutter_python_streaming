@@ -25,6 +25,10 @@ class JuliaSetGeneratorServiceClient extends $grpc.Client {
       '/JuliaSetGeneratorService/GetSetAsHeightMap',
       ($0.HeightMapRequest value) => value.writeToBuffer(),
       ($core.List<$core.int> value) => $0.HeightMapResponse.fromBuffer(value));
+  static final _$getSetAsHeightMapStream = $grpc.ClientMethod<$0.HeightMapRequest, $0.HeightMapResponse>(
+      '/JuliaSetGeneratorService/GetSetAsHeightMapStream',
+      ($0.HeightMapRequest value) => value.writeToBuffer(),
+      ($core.List<$core.int> value) => $0.HeightMapResponse.fromBuffer(value));
 
   JuliaSetGeneratorServiceClient($grpc.ClientChannel channel,
       {$grpc.CallOptions? options,
@@ -34,6 +38,10 @@ class JuliaSetGeneratorServiceClient extends $grpc.Client {
 
   $grpc.ResponseFuture<$0.HeightMapResponse> getSetAsHeightMap($0.HeightMapRequest request, {$grpc.CallOptions? options}) {
     return $createUnaryCall(_$getSetAsHeightMap, request, options: options);
+  }
+
+  $grpc.ResponseStream<$0.HeightMapResponse> getSetAsHeightMapStream($0.HeightMapRequest request, {$grpc.CallOptions? options}) {
+    return $createStreamingCall(_$getSetAsHeightMapStream, $async.Stream.fromIterable([request]), options: options);
   }
 }
 
@@ -49,11 +57,23 @@ abstract class JuliaSetGeneratorServiceBase extends $grpc.Service {
         false,
         ($core.List<$core.int> value) => $0.HeightMapRequest.fromBuffer(value),
         ($0.HeightMapResponse value) => value.writeToBuffer()));
+    $addMethod($grpc.ServiceMethod<$0.HeightMapRequest, $0.HeightMapResponse>(
+        'GetSetAsHeightMapStream',
+        getSetAsHeightMapStream_Pre,
+        false,
+        true,
+        ($core.List<$core.int> value) => $0.HeightMapRequest.fromBuffer(value),
+        ($0.HeightMapResponse value) => value.writeToBuffer()));
   }
 
   $async.Future<$0.HeightMapResponse> getSetAsHeightMap_Pre($grpc.ServiceCall call, $async.Future<$0.HeightMapRequest> request) async {
     return getSetAsHeightMap(call, await request);
   }
 
+  $async.Stream<$0.HeightMapResponse> getSetAsHeightMapStream_Pre($grpc.ServiceCall call, $async.Future<$0.HeightMapRequest> request) async* {
+    yield* getSetAsHeightMapStream(call, await request);
+  }
+
   $async.Future<$0.HeightMapResponse> getSetAsHeightMap($grpc.ServiceCall call, $0.HeightMapRequest request);
+  $async.Stream<$0.HeightMapResponse> getSetAsHeightMapStream($grpc.ServiceCall call, $0.HeightMapRequest request);
 }

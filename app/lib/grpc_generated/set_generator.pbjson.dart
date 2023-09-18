@@ -35,10 +35,12 @@ const HeightMapResponse$json = {
   '1': 'HeightMapResponse',
   '2': [
     {'1': 'height_map', '3': 1, '4': 3, '5': 5, '10': 'heightMap'},
+    {'1': 'position', '3': 2, '4': 1, '5': 2, '10': 'position'},
   ],
 };
 
 /// Descriptor for `HeightMapResponse`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List heightMapResponseDescriptor = $convert.base64Decode(
-    'ChFIZWlnaHRNYXBSZXNwb25zZRIdCgpoZWlnaHRfbWFwGAEgAygFUgloZWlnaHRNYXA=');
+    'ChFIZWlnaHRNYXBSZXNwb25zZRIdCgpoZWlnaHRfbWFwGAEgAygFUgloZWlnaHRNYXASGgoIcG'
+    '9zaXRpb24YAiABKAJSCHBvc2l0aW9u');
 

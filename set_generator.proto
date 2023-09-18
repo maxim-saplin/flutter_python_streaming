@@ -3,6 +3,9 @@ syntax = "proto3";
 service JuliaSetGeneratorService {
     // Accepts Width and Height parameters
     rpc GetSetAsHeightMap(HeightMapRequest) returns (HeightMapResponse) {}
+
+    // Infinetly streams frames 
+    rpc GetSetAsHeightMapStream(HeightMapRequest) returns (stream HeightMapResponse) {}
 }
 
 // Define the request message
@@ -19,6 +22,8 @@ message HeightMapRequest {
 
 // Define the response message
 message HeightMapResponse {
-    // SInce there're no multi-dimensional arrays in protobuf, row by row are returned, i.e. there will be HeightMapRequest.height rows
+    // Since there're no multi-dimensional arrays in protobuf, row by row are returned, i.e. there will be HeightMapRequest.height rows
     repeated int32 height_map = 1;
+    // Position that was used during last generation
+    float position = 2;
 }
