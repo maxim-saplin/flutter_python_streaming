@@ -1,11 +1,13 @@
 // ignore_for_file: sort_child_properties_last
 
+import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:app/grpc_generated/client.dart';
 import 'package:app/grpc_generated/init_py.dart';
 import 'package:app/grpc_generated/init_py_native.dart';
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'grpc_generated/set_generator.pbgrpc.dart';
 
@@ -40,6 +42,8 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
   double pixelRatio = 0;
   double position = 0.0;
   String error = '';
+  double lastWidth = 0;
+  double lastHeight = 0;
 
   @override
   void initState() {
@@ -70,8 +74,8 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
                 _Fractals(
                     ready: viewState == ViewStates.ready,
                     values: values,
-                    width: constraints.maxWidth,
-                    height: constraints.maxHeight,
+                    width: lastWidth,
+                    height: lastHeight,
                     // width: 100,
                     // height: 100,
                     pixelRatio: pixelRatio),
@@ -81,6 +85,10 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 6)),
                 Positioned(
+                    top: 15,
+                    child: Text(
+                        '${(lastWidth * pixelRatio).toInt()} x ${(lastHeight * pixelRatio).toInt()}')),
+                Positioned(
                     bottom: 15,
                     child: _BottomPanel(
                       viewState: viewState,
@@ -89,18 +97,23 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
                         setState(() {
                           viewState = ViewStates.loading;
                         });
+                        lastWidth = constraints.maxWidth;
+                        lastHeight = constraints.maxHeight;
                         JuliaSetGeneratorServiceClient(getClientChannel())
                             .getSetAsHeightMap(HeightMapRequest(
-                                width:
-                                    (constraints.maxWidth * pixelRatio).toInt(),
-                                height: (constraints.maxHeight * pixelRatio)
-                                    .toInt(),
+                                width: (lastWidth * pixelRatio).toInt(),
+                                height: (lastHeight * pixelRatio).toInt(),
                                 // width: 100,
                                 // height: 100,
                                 threshold: threshold,
                                 position: position))
                             .then((p0) => setState(() {
                                   values = p0.heightMap;
+                                  if (p0.heightMap.length !=
+                                      (lastWidth * pixelRatio).toInt() *
+                                          (lastHeight * pixelRatio).toInt()) {
+                                    throw 'Invalid length of height map';
+                                  }
                                   position += 0.05;
                                   setState(() {
                                     viewState = ViewStates.ready;
@@ -185,19 +198,26 @@ class _BottomPanel extends StatelessWidget {
                 FloatingActionButton(
                     child: const Icon(Icons.skip_next_rounded),
                     backgroundColor: Colors.white,
+                    foregroundColor:
+                        viewState == ViewStates.ready ? null : Colors.grey[200],
                     tooltip: 'One frame',
-                    onPressed: () => onOneFrame()),
+                    onPressed: viewState == ViewStates.ready
+                        ? () => onOneFrame()
+                        : null),
                 FloatingActionButton(
                     child: const Icon(Icons.play_arrow_rounded),
                     backgroundColor: Colors.white,
+                    foregroundColor:
+                        viewState == ViewStates.ready ? null : Colors.grey[200],
                     tooltip: 'Play animation',
-                    onPressed: () => onPlay())
+                    onPressed:
+                        viewState == ViewStates.ready ? () => onPlay() : null)
               ]),
         ));
   }
 }
 
-class _Fractals extends StatelessWidget {
+class _Fractals extends StatefulWidget {
   const _Fractals(
       {required this.ready,
       required this.values,
@@ -212,52 +232,69 @@ class _Fractals extends StatelessWidget {
   final double pixelRatio;
 
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: width.toDouble(),
-      height: height.toDouble(),
-      child: !ready || values.isEmpty
-          ? const Center(child: Text('Fractals will be displayed here...'))
-          : CustomPaint(
-              painter: HeightMapPainter(
-                  width: (width * pixelRatio).toInt(),
-                  height: (height * pixelRatio).toInt(),
-                  values: values)),
-    );
-  }
+  State<_Fractals> createState() => _FractalsState();
 }
 
-class HeightMapPainter extends CustomPainter {
-  final int width;
-  final int height;
-  final List<int> values;
-
-  HeightMapPainter(
-      {required this.width, required this.height, required this.values});
+class _FractalsState extends State<_Fractals> {
+  ui.Image? image;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..strokeWidth = 1.0;
+  void didUpdateWidget(_Fractals oldWidget) {
+    super.didUpdateWidget(oldWidget);
 
-    for (int y = 0; y < height; y++) {
-      for (int x = 0; x < width; x++) {
-        var iter = values[y * height + x];
-        paint.color = Color.fromRGBO(iter, iter, iter, 1);
-        // paint.color = Color.fromRGBO(
-        //     255 * (1 + cos(3.32 * log(iter))) ~/ 2,
-        //     255 * (1 + cos(0.774 * log(iter))) ~/ 2,
-        //     255 * (1 + cos(0.412 * log(iter))) ~/ 2,
-        //     1);
-        // Put pixel
-        canvas.drawPoints(PointMode.points,
-            <Offset>[Offset(x.toDouble(), y.toDouble())], paint);
+    if (oldWidget.height != widget.height ||
+        oldWidget.width != widget.width ||
+        oldWidget.values.hashCode != widget.values.hashCode) {
+      if (image != null) {
+        image!.dispose();
+        image = null;
+      }
+
+      var pWidth = (widget.width * widget.pixelRatio).toInt();
+      var pHeight = (widget.height * widget.pixelRatio).toInt();
+
+      if (widget.values.isNotEmpty &&
+          widget.values.length == pWidth * pHeight) {
+        getImage(pWidth, pHeight, widget.values)
+            .then((value) => setState(() => image = value));
       }
     }
   }
 
+  Future<ui.Image> getImage(int width, int height, List<int> values) async {
+    final pixelData = Uint32List(values.length);
+
+    for (int y = 0; y < height; y++) {
+      for (int x = 0; x < width; x++) {
+        var pos = y * width + x;
+        var iter = values[pos] + 1;
+        //pixelData[pos] = 0xFF000000 + iter + iter << 8 + iter << 16;
+        pixelData[pos] = 0xFF000000 +
+            255 * (1 + cos(3.32 * log(iter))) ~/ 2 +
+            (255 * 256 * (1 + cos(0.774 * log(iter))) ~/ 2) +
+            (255 * 256 * 256 * (1 + cos(0.412 * log(iter))) ~/ 2);
+      }
+    }
+
+    var buffer =
+        await ImmutableBuffer.fromUint8List(pixelData.buffer.asUint8List());
+    var codec = await ImageDescriptor.raw(buffer,
+            width: width, height: height, pixelFormat: PixelFormat.rgba8888)
+        .instantiateCodec(targetWidth: width, targetHeight: height);
+    var frame = await codec.getNextFrame();
+
+    //buffer.dispose();
+
+    return frame.image;
+  }
+
   @override
-  bool shouldRepaint(HeightMapPainter oldDelegate) =>
-      oldDelegate.height != height ||
-      oldDelegate.width != width ||
-      oldDelegate.values.hashCode != values.hashCode;
+  Widget build(BuildContext context) {
+    return SizedBox(
+        width: widget.width.toDouble(),
+        height: widget.height.toDouble(),
+        child: widget.ready && image != null
+            ? RawImage(image: image)
+            : const Center(child: Text('Fractals will be displayed here...')));
+  }
 }
