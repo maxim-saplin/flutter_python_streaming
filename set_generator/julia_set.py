@@ -21,32 +21,21 @@ def _GetSetAsHeightMap(widthPoints: int, heightPoints: int, threshold: int, posi
     x_start, y_start = -2, -2  # an interesting region starts here
     width, height = 4, 4*widthPoints/heightPoints  # for 4 units up and right
 
-    # real and imaginary axis
+    # real (x) and imaginary (y) axis
     re = np.linspace(x_start, x_start + width, widthPoints)
-    # rePixel = np.linspace(0, widthPoints, widthPoints)
     im = np.linspace(y_start, y_start + height, heightPoints)
-    # imPixel = np.linspace(y_start, y_start + round(heightPoints / height), heightPoints)
 
     # we represent c as c = r*cos(a) + i*r*sin(a) = r*e^{i*a}
     r = 0.7
-    #a = np.linspace(0, 2*np.pi, 100)
     a = 2*np.pi*position;
-
-    # @jit(nopython=True)
-    # def get_julia_row(re, im, const_x, const_y, threshold):
-    #     X = np.empty(len(im))
-    #     for j in range(len(im)):
-    #         X[j] = _check_in_julia_set(re, im[j], const_x, const_y, threshold)
-    #     return X
+    cx, cy = r * np.cos(a), r * np.sin(a)  # the initial c number
     
     def get_julia_row_inplace(i, re, im, const_x, const_y, threshold):
-        for j in range(heightPoints):
-            result[i*widthPoints+j] = _check_in_julia_set(re, im[j], const_x, const_y, threshold)
+        for j in range(widthPoints):
+            result[i*heightPoints+j] = _check_in_julia_set(re[j], im, const_x, const_y, threshold)
 
-    cx, cy = r * np.cos(a), r * np.sin(a)  # the initial c number
-
-    for i in range(widthPoints):
-        get_julia_row_inplace(i, re[i], im, cx, cy, threshold)
+    for i in range(heightPoints):
+        get_julia_row_inplace(i, re, im[i], cx, cy, threshold)
         
     elapsed_time = time.time() - start_time
     print(f"{round(elapsed_time * 1000, 2)}ms")

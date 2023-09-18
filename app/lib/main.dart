@@ -45,6 +45,9 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     pixelRatio = WidgetsBinding
         .instance.platformDispatcher.displays.first.devicePixelRatio;
+
+    pyInitResult
+        .whenComplete(() => setState(() => viewState = ViewStates.ready));
   }
 
   ViewStates viewState = ViewStates.notReady;
@@ -56,124 +59,139 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
         theme: ThemeData.light(useMaterial3: true),
         home: Scaffold(
             body: LayoutBuilder(
-          builder: (context, constraints) =>
-              Stack(alignment: Alignment.center, children: [
-            _Fractals(
-                ready: viewState == ViewStates.ready,
-                values: values,
-                width: constraints.maxWidth,
-                height: constraints.maxHeight,
-                pixelRatio: pixelRatio),
-            if (viewState == ViewStates.loading)
-              const CircularProgressIndicator(strokeWidth: 6),
-            Positioned(
-                bottom: 15,
-                child: Material(
-                    elevation: 10,
-                    borderRadius: const BorderRadius.all(Radius.circular(10)),
-                    child: Container(
-                      width: 180,
-                      height: 48,
-                      padding: const EdgeInsets.all(8),
-                      child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            FutureBuilder<void>(
-                              future: pyInitResult,
-                              builder: (context, snapshot) {
-                                if (snapshot.connectionState ==
-                                    ConnectionState.waiting) {
-                                  return const SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 6));
-                                } else if (snapshot.hasError) {
-                                  return Tooltip(
-                                    message: 'Error: ${snapshot.error}',
-                                    child: const Icon(
-                                      Icons.circle,
-                                      color: Colors.red,
-                                    ),
-                                  );
-                                } else {
-                                  // When future completes, display a message saying that Python has been loaded
-
-                                  if (snapshot.hasData) {
-                                    Future(() => setState(() {
-                                          viewState = ViewStates.ready;
-                                        }));
-                                  }
-                                  return Tooltip(
-                                    richMessage: TextSpan(
-                                      children: [
-                                        const TextSpan(
-                                          text: 'Using ',
-                                        ),
-                                        TextSpan(
-                                          text: '$defaultHost:$defaultPort',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        TextSpan(
-                                          text:
-                                              ', ${localPyStartSkipped ? 'skipped launching local server' : 'launched local server'}',
-                                        ),
-                                      ],
-                                    ),
-                                    child: const Icon(
-                                      Icons.circle,
-                                      color: Colors.green,
-                                    ),
-                                  );
-                                }
-                              },
-                            ),
-                            FloatingActionButton(
-                              child: const Icon(Icons.skip_next_rounded),
-                              tooltip: 'One frame',
-                              onPressed: () {
-                                setState(() {
-                                  viewState = ViewStates.loading;
-                                });
-                                JuliaSetGeneratorServiceClient(
-                                        getClientChannel())
-                                    .getSetAsHeightMap(HeightMapRequest(
-                                        width:
-                                            (constraints.maxWidth * pixelRatio)
-                                                .toInt(),
-                                        height:
-                                            (constraints.maxHeight * pixelRatio)
-                                                .toInt(),
-                                        threshold: threshold,
-                                        position: position))
-                                    .then((p0) => setState(() {
-                                          values = p0.heightMap;
-                                          setState(() {
-                                            viewState = ViewStates.ready;
-                                          });
-                                        }))
-                                    .onError((error, stackTrace) {
+          builder: (context, constraints) => Stack(
+              fit: StackFit.expand,
+              alignment: Alignment.center,
+              children: [
+                _Fractals(
+                    ready: viewState == ViewStates.ready,
+                    values: values,
+                    // width: constraints.maxWidth,
+                    // height: constraints.maxHeight,
+                    width: 100,
+                    height: 100,
+                    pixelRatio: pixelRatio),
+                if (viewState == ViewStates.loading)
+                  const Positioned(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 6)),
+                Positioned(
+                    bottom: 15,
+                    child: _BottomPanel(
+                      viewState: viewState,
+                      onOneFrame: () {
+                        setState(() {
+                          viewState = ViewStates.loading;
+                        });
+                        JuliaSetGeneratorServiceClient(getClientChannel())
+                            .getSetAsHeightMap(HeightMapRequest(
+                                width:
+                                    (constraints.maxWidth * pixelRatio).toInt(),
+                                height: (constraints.maxHeight * pixelRatio)
+                                    .toInt(),
+                                threshold: threshold,
+                                position: position))
+                            .then((p0) => setState(() {
+                                  values = p0.heightMap;
                                   setState(() {
                                     viewState = ViewStates.ready;
                                   });
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                          content: Text(
-                                              'An error occured\n$error')));
-                                });
-                              },
-                            ),
-                            FloatingActionButton(
-                                child: const Icon(Icons.play_arrow_rounded),
-                                tooltip: 'Play animation',
-                                onPressed: () {})
-                          ]),
-                    )))
-          ]),
+                                }))
+                            .onError((error, stackTrace) {
+                          setState(() {
+                            viewState = ViewStates.ready;
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text('An error occured\n$error')));
+                        });
+                      },
+                      onPlay: () {},
+                    ))
+              ]),
         )));
+  }
+}
+
+class _BottomPanel extends StatelessWidget {
+  const _BottomPanel(
+      {required this.viewState,
+      required this.onOneFrame,
+      required this.onPlay});
+
+  final ViewStates viewState;
+  final Function onOneFrame;
+  final Function onPlay;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+        elevation: 10,
+        borderRadius: const BorderRadius.all(Radius.circular(10)),
+        child: Container(
+          width: 180,
+          height: 48,
+          padding: const EdgeInsets.all(8),
+          child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                FutureBuilder<void>(
+                  future: pyInitResult,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 6));
+                    } else if (snapshot.hasError) {
+                      return Tooltip(
+                        message: 'Error: ${snapshot.error}',
+                        child: const Icon(
+                          Icons.circle,
+                          color: Colors.red,
+                        ),
+                      );
+                    } else {
+                      // When future completes, display a message saying that Python has been loaded
+                      return Tooltip(
+                        richMessage: TextSpan(
+                          children: [
+                            const TextSpan(
+                              text: 'Using ',
+                            ),
+                            TextSpan(
+                              text: '$defaultHost:$defaultPort',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            TextSpan(
+                              text:
+                                  ', ${localPyStartSkipped ? 'skipped launching local server' : 'launched local server'}',
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.circle,
+                          color: Colors.green,
+                        ),
+                      );
+                    }
+                  },
+                ),
+                FloatingActionButton(
+                    child: const Icon(Icons.skip_next_rounded),
+                    backgroundColor: Colors.white,
+                    tooltip: 'One frame',
+                    onPressed: () => onOneFrame()),
+                FloatingActionButton(
+                    child: const Icon(Icons.play_arrow_rounded),
+                    backgroundColor: Colors.white,
+                    tooltip: 'Play animation',
+                    onPressed: () => onPlay())
+              ]),
+        ));
   }
 }
 
