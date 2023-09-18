@@ -38,6 +38,8 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
   }
 
   double pixelRatio = 0;
+  double position = 0.0;
+  String error = '';
 
   @override
   void initState() {
@@ -47,6 +49,8 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
         .instance.platformDispatcher.displays.first.devicePixelRatio;
 
     pyInitResult
+        .onError(
+            (error, stackTrace) => setState(() => error = error.toString()))
         .whenComplete(() => setState(() => viewState = ViewStates.ready));
   }
 
@@ -66,10 +70,10 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
                 _Fractals(
                     ready: viewState == ViewStates.ready,
                     values: values,
-                    // width: constraints.maxWidth,
-                    // height: constraints.maxHeight,
-                    width: 100,
-                    height: 100,
+                    width: constraints.maxWidth,
+                    height: constraints.maxHeight,
+                    // width: 100,
+                    // height: 100,
                     pixelRatio: pixelRatio),
                 if (viewState == ViewStates.loading)
                   const Positioned(
@@ -80,6 +84,7 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
                     bottom: 15,
                     child: _BottomPanel(
                       viewState: viewState,
+                      error: error,
                       onOneFrame: () {
                         setState(() {
                           viewState = ViewStates.loading;
@@ -90,10 +95,13 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
                                     (constraints.maxWidth * pixelRatio).toInt(),
                                 height: (constraints.maxHeight * pixelRatio)
                                     .toInt(),
+                                // width: 100,
+                                // height: 100,
                                 threshold: threshold,
                                 position: position))
                             .then((p0) => setState(() {
                                   values = p0.heightMap;
+                                  position += 0.05;
                                   setState(() {
                                     viewState = ViewStates.ready;
                                   });
@@ -116,10 +124,12 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
 class _BottomPanel extends StatelessWidget {
   const _BottomPanel(
       {required this.viewState,
+      this.error = '',
       required this.onOneFrame,
       required this.onPlay});
 
   final ViewStates viewState;
+  final String error;
   final Function onOneFrame;
   final Function onPlay;
 
@@ -136,50 +146,42 @@ class _BottomPanel extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                FutureBuilder<void>(
-                  future: pyInitResult,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 6));
-                    } else if (snapshot.hasError) {
-                      return Tooltip(
-                        message: 'Error: ${snapshot.error}',
-                        child: const Icon(
-                          Icons.circle,
-                          color: Colors.red,
-                        ),
-                      );
-                    } else {
-                      // When future completes, display a message saying that Python has been loaded
-                      return Tooltip(
-                        richMessage: TextSpan(
-                          children: [
-                            const TextSpan(
-                              text: 'Using ',
+                error.isEmpty && viewState == ViewStates.notReady
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 6))
+                    : (error.isNotEmpty
+                        ? Tooltip(
+                            message: 'Error: $error}',
+                            child: const Icon(
+                              Icons.circle,
+                              color: Colors.red,
+                            ))
+                        :
+                        // When future completes, display a message saying that Python has been loaded
+                        Tooltip(
+                            richMessage: TextSpan(
+                              children: [
+                                const TextSpan(
+                                  text: 'Using ',
+                                ),
+                                TextSpan(
+                                  text: '$defaultHost:$defaultPort',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text:
+                                      ', ${localPyStartSkipped ? 'skipped launching local server' : 'launched local server'}',
+                                ),
+                              ],
                             ),
-                            TextSpan(
-                              text: '$defaultHost:$defaultPort',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            TextSpan(
-                              text:
-                                  ', ${localPyStartSkipped ? 'skipped launching local server' : 'launched local server'}',
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.circle,
-                          color: Colors.green,
-                        ),
-                      );
-                    }
-                  },
-                ),
+                            child: const Icon(
+                              Icons.circle,
+                              color: Colors.green,
+                            ))),
                 FloatingActionButton(
                     child: const Icon(Icons.skip_next_rounded),
                     backgroundColor: Colors.white,
@@ -237,15 +239,15 @@ class HeightMapPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..strokeWidth = 1.0;
 
-    for (int x = 0; x < width; x++) {
-      for (int y = 0; y < height; y++) {
-        var iter = values[y * width + x] + 1;
-        // paint.color = Color.fromRGBO(iter, iter, iter, 1);
-        paint.color = Color.fromRGBO(
-            255 * (1 + cos(3.32 * log(iter))) ~/ 2,
-            255 * (1 + cos(0.774 * log(iter))) ~/ 2,
-            255 * (1 + cos(0.412 * log(iter))) ~/ 2,
-            1);
+    for (int y = 0; y < height; y++) {
+      for (int x = 0; x < width; x++) {
+        var iter = values[y * height + x];
+        paint.color = Color.fromRGBO(iter, iter, iter, 1);
+        // paint.color = Color.fromRGBO(
+        //     255 * (1 + cos(3.32 * log(iter))) ~/ 2,
+        //     255 * (1 + cos(0.774 * log(iter))) ~/ 2,
+        //     255 * (1 + cos(0.412 * log(iter))) ~/ 2,
+        //     1);
         // Put pixel
         canvas.drawPoints(PointMode.points,
             <Offset>[Offset(x.toDouble(), y.toDouble())], paint);
@@ -254,5 +256,8 @@ class HeightMapPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(HeightMapPainter oldDelegate) => true;
+  bool shouldRepaint(HeightMapPainter oldDelegate) =>
+      oldDelegate.height != height ||
+      oldDelegate.width != width ||
+      oldDelegate.values.hashCode != values.hashCode;
 }

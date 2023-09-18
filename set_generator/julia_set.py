@@ -19,7 +19,7 @@ def _GetSetAsHeightMap(widthPoints: int, heightPoints: int, threshold: int, posi
     start_time = time.time()  # start timing
     result = np.empty(widthPoints * heightPoints, dtype=np.int32)
     x_start, y_start = -2, -2  # an interesting region starts here
-    width, height = 4, 4*widthPoints/heightPoints  # for 4 units up and right
+    width, height = 4, 4*heightPoints/widthPoints  # fix aspect ratio
 
     # real (x) and imaginary (y) axis
     re = np.linspace(x_start, x_start + width, widthPoints)
@@ -61,7 +61,7 @@ def _check_in_julia_set(zx, zy, const_x, const_y, threshold):
     
     for i in range(threshold):
         z = z**2 + c
-        if abs(z) > 4.:  # it diverged
+        if abs(z) > 4.:  # it diverged, taking 4 as arbitrary ceiling for determining the escape
             return i
         
     return threshold - 1  # it didn't diverge
