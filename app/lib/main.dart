@@ -1,3 +1,5 @@
+// ignore_for_file: sort_child_properties_last
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:app/grpc_generated/client.dart';
@@ -7,8 +9,6 @@ import 'dart:math';
 
 import 'grpc_generated/set_generator.pbgrpc.dart';
 
-const width = 64;
-const height = 64;
 const threshold = 100;
 const position = 0.5;
 
@@ -28,6 +28,8 @@ class MainApp extends StatefulWidget {
   MainAppState createState() => MainAppState();
 }
 
+enum ViewStates { notReady, ready, loading }
+
 class MainAppState extends State<MainApp> with WidgetsBindingObserver {
   @override
   Future<AppExitResponse> didRequestAppExit() {
@@ -35,135 +37,173 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
     return super.didRequestAppExit();
   }
 
-  var widthPixels = 0;
-  var heightPixels = 0;
+  double pixelRatio = 0;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    widthPixels = (width *
-            WidgetsBinding
-                .instance.platformDispatcher.displays.first.devicePixelRatio)
-        .toInt();
-
-    heightPixels = (height *
-            WidgetsBinding
-                .instance.platformDispatcher.displays.first.devicePixelRatio)
-        .toInt();
+    pixelRatio = WidgetsBinding
+        .instance.platformDispatcher.displays.first.devicePixelRatio;
   }
 
-  // List<int> numList = [];
-
-  bool ready = false;
+  ViewStates viewState = ViewStates.notReady;
   List<int> values = [];
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+        theme: ThemeData.light(useMaterial3: true),
         home: Scaffold(
-      body: Stack(alignment: Alignment.bottomCenter, children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          alignment: Alignment.center,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: width.toDouble(),
-                height: height.toDouble(),
-                child: !ready || values.isEmpty
-                    ? const Text('Awating...')
-                    : CustomPaint(
-                        painter: HeightMapPainter(
-                            width: widthPixels,
-                            height: heightPixels,
-                            values: values)),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-            padding: const EdgeInsets.all(10),
-            child: // Set the borderRadius property of the Container widget to make it rounded
-                Container(
-              width: 140,
-              height: 40,
-              padding: const EdgeInsets.all(5),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                color: Colors.grey[300],
-              ),
-              child:
-                  Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                FutureBuilder<void>(
-                  future: pyInitResult,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 6));
-                    } else if (snapshot.hasError) {
-                      return Tooltip(
-                        message: 'Error: ${snapshot.error}',
-                        child: const Icon(
-                          Icons.circle,
-                          color: Colors.red,
-                        ),
-                      );
-                    } else {
-                      // When future completes, display a message saying that Python has been loaded
-                      Future(() => setState(() {
-                            ready = true;
-                          }));
-                      return Tooltip(
-                        richMessage: TextSpan(
+            body: LayoutBuilder(
+          builder: (context, constraints) =>
+              Stack(alignment: Alignment.center, children: [
+            _Fractals(
+                ready: viewState == ViewStates.ready,
+                values: values,
+                width: constraints.maxWidth,
+                height: constraints.maxHeight,
+                pixelRatio: pixelRatio),
+            if (viewState == ViewStates.loading)
+              const CircularProgressIndicator(strokeWidth: 6),
+            Positioned(
+                bottom: 15,
+                child: Material(
+                    elevation: 10,
+                    borderRadius: const BorderRadius.all(Radius.circular(10)),
+                    child: Container(
+                      width: 180,
+                      height: 48,
+                      padding: const EdgeInsets.all(8),
+                      child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            const TextSpan(
-                              text: 'Using ',
+                            FutureBuilder<void>(
+                              future: pyInitResult,
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 6));
+                                } else if (snapshot.hasError) {
+                                  return Tooltip(
+                                    message: 'Error: ${snapshot.error}',
+                                    child: const Icon(
+                                      Icons.circle,
+                                      color: Colors.red,
+                                    ),
+                                  );
+                                } else {
+                                  // When future completes, display a message saying that Python has been loaded
+
+                                  if (snapshot.hasData) {
+                                    Future(() => setState(() {
+                                          viewState = ViewStates.ready;
+                                        }));
+                                  }
+                                  return Tooltip(
+                                    richMessage: TextSpan(
+                                      children: [
+                                        const TextSpan(
+                                          text: 'Using ',
+                                        ),
+                                        TextSpan(
+                                          text: '$defaultHost:$defaultPort',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text:
+                                              ', ${localPyStartSkipped ? 'skipped launching local server' : 'launched local server'}',
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Icon(
+                                      Icons.circle,
+                                      color: Colors.green,
+                                    ),
+                                  );
+                                }
+                              },
                             ),
-                            TextSpan(
-                              text: '$defaultHost:$defaultPort',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
+                            FloatingActionButton(
+                              child: const Icon(Icons.skip_next_rounded),
+                              tooltip: 'One frame',
+                              onPressed: () {
+                                setState(() {
+                                  viewState = ViewStates.loading;
+                                });
+                                JuliaSetGeneratorServiceClient(
+                                        getClientChannel())
+                                    .getSetAsHeightMap(HeightMapRequest(
+                                        width:
+                                            (constraints.maxWidth * pixelRatio)
+                                                .toInt(),
+                                        height:
+                                            (constraints.maxHeight * pixelRatio)
+                                                .toInt(),
+                                        threshold: threshold,
+                                        position: position))
+                                    .then((p0) => setState(() {
+                                          values = p0.heightMap;
+                                          setState(() {
+                                            viewState = ViewStates.ready;
+                                          });
+                                        }))
+                                    .onError((error, stackTrace) {
+                                  setState(() {
+                                    viewState = ViewStates.ready;
+                                  });
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                          content: Text(
+                                              'An error occured\n$error')));
+                                });
+                              },
                             ),
-                            TextSpan(
-                              text:
-                                  ', ${localPyStartSkipped ? 'skipped launching local server' : 'launched local server'}',
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.circle,
-                          color: Colors.green,
-                        ),
-                      );
-                    }
-                  },
-                ),
-                SizedBox(
-                    height: 30,
-                    child: IconButton(
-                      icon: const Icon(Icons.skip_next_rounded),
-                      onPressed: () {
-                        setState(() {});
-                        JuliaSetGeneratorServiceClient(getClientChannel())
-                            .getSetAsHeightMap(HeightMapRequest(
-                                width: widthPixels,
-                                height: heightPixels,
-                                threshold: threshold,
-                                position: position))
-                            .then((p0) => setState(() {
-                                  values = p0.heightMap;
-                                }));
-                      },
-                    ))
-              ]),
-            ))
-      ]),
-    ));
+                            FloatingActionButton(
+                                child: const Icon(Icons.play_arrow_rounded),
+                                tooltip: 'Play animation',
+                                onPressed: () {})
+                          ]),
+                    )))
+          ]),
+        )));
+  }
+}
+
+class _Fractals extends StatelessWidget {
+  const _Fractals(
+      {required this.ready,
+      required this.values,
+      required this.width,
+      required this.height,
+      required this.pixelRatio});
+
+  final bool ready;
+  final List<int> values;
+  final double width;
+  final double height;
+  final double pixelRatio;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width.toDouble(),
+      height: height.toDouble(),
+      child: !ready || values.isEmpty
+          ? const Center(child: Text('Fractals will be displayed here...'))
+          : CustomPaint(
+              painter: HeightMapPainter(
+                  width: (width * pixelRatio).toInt(),
+                  height: (height * pixelRatio).toInt(),
+                  values: values)),
+    );
   }
 }
 
