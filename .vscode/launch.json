@@ -26,6 +26,20 @@
               ],
         },
         {
+            "name": "web app (remote server, auto start)",
+            "request": "launch",
+            "program": "app/lib/main.dart",
+            "type": "dart",
+            "toolArgs": [
+                "--dart-define",
+                "useRemote=true",
+                "--dart-define",
+                "port=8080",
+              ],
+              "preLaunchTask": "start server",
+              "postDebugTask": "stop server"
+        },
+        {
             "name": "server.py",
             "type": "python",
             "request": "launch",

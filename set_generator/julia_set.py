@@ -5,18 +5,17 @@ from numba import jit
 
 class JuliaSetGeneratorService(set_generator_pb2_grpc.JuliaSetGeneratorService):
     def GetSetAsHeightMap(self, request, context):
-        # Example of debuging and fixing
-        # height_map = GetSet(request.width, request.height)
+        start_time = time.time()  # start timing
         height_map = _GetSetAsHeightMap(request.width, request.height, request.threshold, request.position)
-
+        elapsed_time = time.time() - start_time
+        print(f"{round(elapsed_time * 1000, 2)}ms")
         result = set_generator_pb2.HeightMapResponse(height_map=height_map.tolist())
   
         # result = set_generator_pb2.HeightMapResponse(height_map=flattened.astype(np.float32).tolist())
         return result
         
-# @jit(nopython=True)
+@jit(nopython=True)
 def _GetSetAsHeightMap(widthPoints: int, heightPoints: int, threshold: int, position: float):
-    start_time = time.time()  # start timing
     result = np.empty(widthPoints * heightPoints, dtype=np.int32)
     width, height = 4, 4*heightPoints/widthPoints  # fix aspect ratio
     x_start, y_start = -width/2, -height/2  # an interesting region starts here
@@ -34,12 +33,9 @@ def _GetSetAsHeightMap(widthPoints: int, heightPoints: int, threshold: int, posi
         for j in range(widthPoints):
             result[i*widthPoints+j] = _check_in_julia_set(re[j], im[i], cx, cy, threshold)
         
-    elapsed_time = time.time() - start_time
-    print(f"{round(elapsed_time * 1000, 2)}ms")
-        
     return result
 
-# @jit(nopython=True)
+@jit(nopython=True)
 def _check_in_julia_set(zx, zy, const_x, const_y, threshold):
     """Calculates whether the number z[0] = zx + i*zy with a constant c = x + i*y
     belongs to the Julia set. In order to belong, the sequence 
