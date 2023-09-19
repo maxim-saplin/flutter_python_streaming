@@ -422,7 +422,6 @@ class _FractalsState extends State<_Fractals> {
         .instantiateCodec(targetWidth: width, targetHeight: height);
     var frame = await codec.getNextFrame();
 
-    // TODO, check if it can be disposed without breaking image
     buffer.dispose();
 
     return frame.image;
