@@ -1,14 +1,19 @@
 syntax = "proto3";
 
+
 service JuliaSetGeneratorService {
-    // Accepts Width and Height parameters
+    // Accepts Width and Height parameters, returns a 'height map', i.e. for each pixel how many iterations happened
+    // before the algo stopped checking for divergance. The more iterations, the higher the magnitude
     rpc GetSetAsHeightMap(HeightMapRequest) returns (HeightMapResponse) {}
 
     // Infinetly streams frames 
     rpc GetSetAsHeightMapStream(HeightMapRequest) returns (stream HeightMapResponse) {}
+
+    // Infinetly streams frames, use bytes rather than list of int32
+    rpc GetSetAsHeightMapAsBytesStream(HeightMapRequest) returns (stream HeightMapBytesResponse) {}
 }
 
-// Define the request message
+// Request Julia set height map (iterations per pixel) of a given area
 message HeightMapRequest {
     // Width in dots
     int32 width = 1;
@@ -20,10 +25,20 @@ message HeightMapRequest {
     float position = 4;
 }
 
-// Define the response message
+// Generayed Julia set height map (iterations per pixel) of a given area
 message HeightMapResponse {
     // Since there're no multi-dimensional arrays in protobuf, row by row are returned, i.e. there will be HeightMapRequest.height rows
     repeated int32 height_map = 1;
+    // Position that was used during last generation
+    float position = 2;
+}
+
+// Same as HeightMapResponse, yet for efficiency the results are returned as bytes.
+// Since no threshold above 255 is expected each pixel can be presented by a single by
+// rather than 4 bytes when using int32 list
+message HeightMapBytesResponse {
+    // Since there're no multi-dimensional arrays in protobuf, row by row are returned, i.e. there will be HeightMapRequest.height rows
+    bytes height_map = 1;
     // Position that was used during last generation
     float position = 2;
 }

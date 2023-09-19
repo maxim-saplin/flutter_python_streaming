@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13set_generator.proto\"V\n\x10HeightMapRequest\x12\r\n\x05width\x18\x01 \x01(\x05\x12\x0e\n\x06height\x18\x02 \x01(\x05\x12\x11\n\tthreshold\x18\x03 \x01(\x05\x12\x10\n\x08position\x18\x04 \x01(\x02\"9\n\x11HeightMapResponse\x12\x12\n\nheight_map\x18\x01 \x03(\x05\x12\x10\n\x08position\x18\x02 \x01(\x02\x32\x9e\x01\n\x18JuliaSetGeneratorService\x12<\n\x11GetSetAsHeightMap\x12\x11.HeightMapRequest\x1a\x12.HeightMapResponse\"\x00\x12\x44\n\x17GetSetAsHeightMapStream\x12\x11.HeightMapRequest\x1a\x12.HeightMapResponse\"\x00\x30\x01\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13set_generator.proto\"V\n\x10HeightMapRequest\x12\r\n\x05width\x18\x01 \x01(\x05\x12\x0e\n\x06height\x18\x02 \x01(\x05\x12\x11\n\tthreshold\x18\x03 \x01(\x05\x12\x10\n\x08position\x18\x04 \x01(\x02\"9\n\x11HeightMapResponse\x12\x12\n\nheight_map\x18\x01 \x03(\x05\x12\x10\n\x08position\x18\x02 \x01(\x02\">\n\x16HeightMapBytesResponse\x12\x12\n\nheight_map\x18\x01 \x01(\x0c\x12\x10\n\x08position\x18\x02 \x01(\x02\x32\xf0\x01\n\x18JuliaSetGeneratorService\x12<\n\x11GetSetAsHeightMap\x12\x11.HeightMapRequest\x1a\x12.HeightMapResponse\"\x00\x12\x44\n\x17GetSetAsHeightMapStream\x12\x11.HeightMapRequest\x1a\x12.HeightMapResponse\"\x00\x30\x01\x12P\n\x1eGetSetAsHeightMapAsBytesStream\x12\x11.HeightMapRequest\x1a\x17.HeightMapBytesResponse\"\x00\x30\x01\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -25,6 +25,8 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _globals['_HEIGHTMAPREQUEST']._serialized_end=109
   _globals['_HEIGHTMAPRESPONSE']._serialized_start=111
   _globals['_HEIGHTMAPRESPONSE']._serialized_end=168
-  _globals['_JULIASETGENERATORSERVICE']._serialized_start=171
-  _globals['_JULIASETGENERATORSERVICE']._serialized_end=329
+  _globals['_HEIGHTMAPBYTESRESPONSE']._serialized_start=170
+  _globals['_HEIGHTMAPBYTESRESPONSE']._serialized_end=232
+  _globals['_JULIASETGENERATORSERVICE']._serialized_start=235
+  _globals['_JULIASETGENERATORSERVICE']._serialized_end=475
 # @@protoc_insertion_point(module_scope)

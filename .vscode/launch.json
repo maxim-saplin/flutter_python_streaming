@@ -35,7 +35,7 @@
                 "useRemote=true",
               ],
             "preLaunchTask": "start server",
-            "postDebugTask": "stop server"
+            //"postDebugTask": "stop server" // this one kills Flutter UI when doing hot restart, better keep server running to keep host restart working
         },
         {
             "name": "app (bundled server)",

@@ -24,13 +24,19 @@ class JuliaSetGeneratorServiceStub(object):
                 request_serializer=set__generator__pb2.HeightMapRequest.SerializeToString,
                 response_deserializer=set__generator__pb2.HeightMapResponse.FromString,
                 )
+        self.GetSetAsHeightMapAsBytesStream = channel.unary_stream(
+                '/JuliaSetGeneratorService/GetSetAsHeightMapAsBytesStream',
+                request_serializer=set__generator__pb2.HeightMapRequest.SerializeToString,
+                response_deserializer=set__generator__pb2.HeightMapBytesResponse.FromString,
+                )
 
 
 class JuliaSetGeneratorServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def GetSetAsHeightMap(self, request, context):
-        """Accepts Width and Height parameters
+        """Accepts Width and Height parameters, returns a 'height map', i.e. for each pixel how many iterations happened
+        before the algo stopped checking for divergance. The more iterations, the higher the magnitude
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -38,6 +44,13 @@ class JuliaSetGeneratorServiceServicer(object):
 
     def GetSetAsHeightMapStream(self, request, context):
         """Infinetly streams frames 
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetSetAsHeightMapAsBytesStream(self, request, context):
+        """Infinetly streams frames, use bytes rather than list of int32
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -55,6 +68,11 @@ def add_JuliaSetGeneratorServiceServicer_to_server(servicer, server):
                     servicer.GetSetAsHeightMapStream,
                     request_deserializer=set__generator__pb2.HeightMapRequest.FromString,
                     response_serializer=set__generator__pb2.HeightMapResponse.SerializeToString,
+            ),
+            'GetSetAsHeightMapAsBytesStream': grpc.unary_stream_rpc_method_handler(
+                    servicer.GetSetAsHeightMapAsBytesStream,
+                    request_deserializer=set__generator__pb2.HeightMapRequest.FromString,
+                    response_serializer=set__generator__pb2.HeightMapBytesResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -97,5 +115,22 @@ class JuliaSetGeneratorService(object):
         return grpc.experimental.unary_stream(request, target, '/JuliaSetGeneratorService/GetSetAsHeightMapStream',
             set__generator__pb2.HeightMapRequest.SerializeToString,
             set__generator__pb2.HeightMapResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetSetAsHeightMapAsBytesStream(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(request, target, '/JuliaSetGeneratorService/GetSetAsHeightMapAsBytesStream',
+            set__generator__pb2.HeightMapRequest.SerializeToString,
+            set__generator__pb2.HeightMapBytesResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

@@ -6,6 +6,7 @@ import 'package:app/grpc_generated/client.dart';
 import 'package:app/grpc_generated/init_py.dart';
 import 'package:app/grpc_generated/init_py_native.dart';
 import 'package:grpc/grpc.dart';
+import 'package:popover/popover.dart';
 import 'dart:ui' as ui;
 
 import 'grpc_generated/set_generator.pbgrpc.dart';
@@ -18,6 +19,8 @@ const initialPosition = 0.5; // any number, full period is 1.0
 int lastFrameReceivedMicro = 10000;
 int previousFrameReceivedMicro = 0;
 Stopwatch sw = Stopwatch()..start();
+bool useByteStreaming =
+    false; // choose which streaming method to use, byte vs int32
 
 Future<void> pyInitResult = Future(() => null);
 
@@ -49,7 +52,7 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
   String error = '';
   double lastWidth = 0;
   double lastHeight = 0;
-  ResponseStream<HeightMapResponse>? grpcStream;
+  ResponseStream? grpcStream;
   ScreenStates screenState = ScreenStates.notReady;
   List<int> heightValues = [];
 
@@ -105,81 +108,8 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
                                 child: _BottomPanel(
                                   screenState: screenState,
                                   error: error,
-                                  onOneFrame: () {
-                                    _prepBeforeGrpcCall(
-                                        constraints, ScreenStates.loading);
-                                    JuliaSetGeneratorServiceClient(
-                                            getClientChannel())
-                                        .getSetAsHeightMap(HeightMapRequest(
-                                            width: (lastWidth * pixelRatio)
-                                                .toInt(),
-                                            height: (lastHeight * pixelRatio)
-                                                .toInt(),
-                                            threshold: threshold,
-                                            position: position))
-                                        .then((value) => setState(() {
-                                              heightValues = value.heightMap;
-                                              if (value.heightMap.length !=
-                                                  (lastWidth * pixelRatio)
-                                                          .toInt() *
-                                                      (lastHeight * pixelRatio)
-                                                          .toInt()) {
-                                                _onGrpcCallError(
-                                                    'Invalid length of height map',
-                                                    context);
-                                              }
-                                              position += 0.05;
-                                              _setScreenState(
-                                                  ScreenStates.ready);
-                                            }))
-                                        .onError((error, stackTrace) =>
-                                            _onGrpcCallError(
-                                                error.toString(), context));
-                                  },
-                                  onPlay: () {
-                                    _prepBeforeGrpcCall(
-                                        constraints, ScreenStates.animating);
-                                    grpcStream = JuliaSetGeneratorServiceClient(
-                                            getClientChannel())
-                                        .getSetAsHeightMapStream(
-                                            HeightMapRequest(
-                                                width: (lastWidth * pixelRatio)
-                                                    .toInt(),
-                                                height:
-                                                    (lastHeight * pixelRatio)
-                                                        .toInt(),
-                                                threshold: threshold,
-                                                position: position));
-
-                                    grpcStream!.listen(
-                                        (value) {
-                                          heightValues = value.heightMap;
-                                          if (value.heightMap.length !=
-                                              (lastWidth * pixelRatio).toInt() *
-                                                  (lastHeight * pixelRatio)
-                                                      .toInt()) {
-                                            _onGrpcCallError(
-                                                'Invalid length of height map',
-                                                context);
-                                          }
-                                          position = value.position;
-                                          previousFrameReceivedMicro =
-                                              lastFrameReceivedMicro;
-                                          lastFrameReceivedMicro =
-                                              sw.elapsedMicroseconds;
-                                          _setScreenState(
-                                              ScreenStates.animating);
-                                        },
-                                        cancelOnError: true,
-                                        onError: (error, stackTrace) {
-                                          if (error is GrpcError &&
-                                              error.code == 1) {
-                                            return; // grpc call canceled
-                                          }
-                                          _onGrpcCallError(
-                                              error.toString(), context);
-                                        });
-                                  },
+                                  onOneFrame: () => _onOneFrame(constraints),
+                                  onPlay: () => _onPlay(constraints),
                                   onPause: () {
                                     grpcStream?.cancel();
                                     _setScreenState(ScreenStates.ready);
@@ -201,6 +131,67 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
     setState(() {
       screenState = state;
     });
+  }
+
+  void _onOneFrame(BoxConstraints constraints) {
+    _prepBeforeGrpcCall(constraints, ScreenStates.loading);
+    var pWidth = (lastWidth * pixelRatio).toInt();
+    var pHeight = (lastHeight * pixelRatio).toInt();
+    JuliaSetGeneratorServiceClient(getClientChannel())
+        .getSetAsHeightMap(HeightMapRequest(
+            width: pWidth,
+            height: pHeight,
+            threshold: threshold,
+            position: position))
+        .then((value) => setState(() {
+              heightValues = value.heightMap;
+              if (value.heightMap.length != pWidth * pHeight) {
+                _onGrpcCallError('Invalid length of height map', context);
+              }
+              position += 0.05;
+              _setScreenState(ScreenStates.ready);
+            }))
+        .onError(
+            (error, stackTrace) => _onGrpcCallError(error.toString(), context));
+  }
+
+  void _onPlay(BoxConstraints constraints) {
+    _prepBeforeGrpcCall(constraints, ScreenStates.animating);
+    var pWidth = (lastWidth * pixelRatio).toInt();
+    var pHeight = (lastHeight * pixelRatio).toInt();
+
+    grpcStream = useByteStreaming
+        ? JuliaSetGeneratorServiceClient(getClientChannel())
+            .getSetAsHeightMapAsBytesStream(HeightMapRequest(
+                width: (lastWidth * pixelRatio).toInt(),
+                height: (lastHeight * pixelRatio).toInt(),
+                threshold: threshold,
+                position: position))
+        : JuliaSetGeneratorServiceClient(getClientChannel())
+            .getSetAsHeightMapStream(HeightMapRequest(
+                width: (lastWidth * pixelRatio).toInt(),
+                height: (lastHeight * pixelRatio).toInt(),
+                threshold: threshold,
+                position: position));
+
+    grpcStream!.listen(
+        (value) {
+          heightValues = value.heightMap;
+          if (value.heightMap.length != pWidth * pHeight) {
+            _onGrpcCallError('Invalid length of height map', context);
+          }
+          position = value.position;
+          previousFrameReceivedMicro = lastFrameReceivedMicro;
+          lastFrameReceivedMicro = sw.elapsedMicroseconds;
+          _setScreenState(ScreenStates.animating);
+        },
+        cancelOnError: true,
+        onError: (error, stackTrace) {
+          if (error is GrpcError && error.code == 1) {
+            return; // grpc call canceled
+          }
+          _onGrpcCallError(error.toString(), context);
+        });
   }
 
   void _onGrpcCallError(String error, BuildContext context) {
@@ -307,8 +298,8 @@ class _BottomPanel extends StatelessWidget {
         elevation: 10,
         borderRadius: const BorderRadius.all(Radius.circular(10)),
         child: Container(
-          width: 180,
-          height: 48,
+          width: 200,
+          height: 54,
           padding: const EdgeInsets.all(8),
           child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -327,27 +318,41 @@ class _BottomPanel extends StatelessWidget {
                               color: Colors.red,
                             ))
                         : Tooltip(
-                            richMessage: TextSpan(
-                              children: [
-                                const TextSpan(
-                                  text: 'Using ',
+                            richMessage: _getStatusText(),
+                            child: MouseRegion(
+                              cursor: MaterialStateMouseCursor.clickable,
+                              child: GestureDetector(
+                                child: const Icon(
+                                  Icons.circle,
+                                  color: Colors.green,
                                 ),
-                                TextSpan(
-                                  text: '$defaultHost:$defaultPort',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                TextSpan(
-                                  text:
-                                      ', ${localPyStartSkipped ? 'skipped launching local server' : 'launched local server'}',
-                                ),
-                              ],
+                                onTap: () {
+                                  showPopover(
+                                    context: context,
+                                    radius: 0,
+                                    backgroundColor: Colors.transparent,
+                                    barrierColor: Colors.white.withAlpha(150),
+                                    shadow: [
+                                      const BoxShadow(
+                                          color: Colors.transparent,
+                                          offset: Offset(0, 0),
+                                          blurRadius: 0)
+                                    ],
+                                    //contentDyOffset: -60,
+                                    transition: PopoverTransition.other,
+                                    transitionDuration:
+                                        const Duration(milliseconds: 100),
+                                    bodyBuilder: (context) => _PanelPopup(
+                                        statusText: _getStatusText()),
+                                    // onPop: () => print('Popover was popped!'),
+                                    direction: PopoverDirection.bottom,
+                                    width: 380,
+                                    height: 160,
+                                  );
+                                },
+                              ),
                             ),
-                            child: const Icon(
-                              Icons.circle,
-                              color: Colors.green,
-                            ))),
+                          )),
                 FloatingActionButton(
                     backgroundColor: Colors.white,
                     foregroundColor: screenState == ScreenStates.ready
@@ -369,6 +374,66 @@ class _BottomPanel extends StatelessWidget {
                         : const Icon(Icons.play_arrow_rounded))
               ]),
         ));
+  }
+
+  TextSpan _getStatusText() {
+    return TextSpan(
+      children: [
+        const TextSpan(
+          text: 'Using ',
+        ),
+        TextSpan(
+          text: '$defaultHost:$defaultPort',
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        TextSpan(
+          text:
+              ', ${localPyStartSkipped ? 'skipped launching local server' : 'launched local server'}',
+        ),
+      ],
+    );
+  }
+}
+
+class _PanelPopup extends StatefulWidget {
+  const _PanelPopup({required this.statusText});
+
+  final TextSpan statusText;
+
+  @override
+  State<_PanelPopup> createState() => _PanelPopupState();
+}
+
+class _PanelPopupState extends State<_PanelPopup> {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+        padding: const EdgeInsets.all(20),
+        child: Material(
+            elevation: 10,
+            borderRadius: const BorderRadius.all(Radius.circular(10)),
+            child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(children: [
+                  Text.rich(widget.statusText),
+                  const SizedBox(
+                    height: 16,
+                  ),
+                  Row(
+                    children: [
+                      Checkbox(
+                          value: useByteStreaming,
+                          onChanged: (value) {
+                            setState(() {
+                              useByteStreaming = value ?? false;
+                            });
+                          }),
+                      const Text('Use byte stream instead of int32')
+                    ],
+                  )
+                ]))));
   }
 }
 

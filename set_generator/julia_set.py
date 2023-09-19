@@ -5,7 +5,7 @@ from numba import jit
 
 class JuliaSetGeneratorService(set_generator_pb2_grpc.JuliaSetGeneratorService):
     def GetSetAsHeightMap(self, request, context):
-        start_time = time.time()  # start timing
+        start_time = time.time()
         height_map = _GetSetAsHeightMap(request.width, request.height, request.threshold, request.position)
         elapsed_time = time.time() - start_time
         print(f"{round(elapsed_time * 1000, 2)}ms")
@@ -17,16 +17,27 @@ class JuliaSetGeneratorService(set_generator_pb2_grpc.JuliaSetGeneratorService):
         position  = request.position
         while True:
             position += 0.02
-            start_time = time.time()  # start timing
+            start_time = time.time()  
             height_map = _GetSetAsHeightMap(request.width, request.height, request.threshold, position)
             elapsed_time = time.time() - start_time
             print(f"{round(elapsed_time * 1000, 2)}ms")
             result = set_generator_pb2.HeightMapResponse(height_map=height_map.tolist(), position=position)
             yield result
+            
+    def GetSetAsHeightMapAsBytesStream(self, request, context):
+        position  = request.position
+        while True:
+            position += 0.02
+            start_time = time.time() 
+            height_map = _GetSetAsHeightMap(request.width, request.height, request.threshold, position)
+            elapsed_time = time.time() - start_time
+            print(f"{round(elapsed_time * 1000, 2)}ms")
+            result = set_generator_pb2.HeightMapBytesResponse(height_map=height_map.tobytes(), position=position)
+            yield result
         
 @jit(nopython=True)
 def _GetSetAsHeightMap(widthPoints: int, heightPoints: int, threshold: int, position: float):
-    result = np.empty(widthPoints * heightPoints, dtype=np.int32)
+    result = np.empty(widthPoints * heightPoints, dtype=np.uint8)
     width, height = 4, 4*heightPoints/widthPoints  # fix aspect ratio
     x_start, y_start = -width/2, -height/2  # an interesting region starts here
 

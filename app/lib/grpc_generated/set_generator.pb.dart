@@ -13,7 +13,7 @@ import 'dart:core' as $core;
 
 import 'package:protobuf/protobuf.dart' as $pb;
 
-/// Define the request message
+/// Request Julia set height map (iterations per pixel) of a given area
 class HeightMapRequest extends $pb.GeneratedMessage {
   factory HeightMapRequest({
     $core.int? width,
@@ -110,7 +110,7 @@ class HeightMapRequest extends $pb.GeneratedMessage {
   void clearPosition() => clearField(4);
 }
 
-/// Define the response message
+/// Generayed Julia set height map (iterations per pixel) of a given area
 class HeightMapResponse extends $pb.GeneratedMessage {
   factory HeightMapResponse({
     $core.Iterable<$core.int>? heightMap,
@@ -159,6 +159,75 @@ class HeightMapResponse extends $pb.GeneratedMessage {
   /// Since there're no multi-dimensional arrays in protobuf, row by row are returned, i.e. there will be HeightMapRequest.height rows
   @$pb.TagNumber(1)
   $core.List<$core.int> get heightMap => $_getList(0);
+
+  /// Position that was used during last generation
+  @$pb.TagNumber(2)
+  $core.double get position => $_getN(1);
+  @$pb.TagNumber(2)
+  set position($core.double v) { $_setFloat(1, v); }
+  @$pb.TagNumber(2)
+  $core.bool hasPosition() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPosition() => clearField(2);
+}
+
+/// Same as HeightMapResponse, yet for efficiency the results are returned as bytes.
+/// Since no threshold above 255 is expected each pixel can be presented by a single by
+/// rather than 4 bytes when using int32 list
+class HeightMapBytesResponse extends $pb.GeneratedMessage {
+  factory HeightMapBytesResponse({
+    $core.List<$core.int>? heightMap,
+    $core.double? position,
+  }) {
+    final $result = create();
+    if (heightMap != null) {
+      $result.heightMap = heightMap;
+    }
+    if (position != null) {
+      $result.position = position;
+    }
+    return $result;
+  }
+  HeightMapBytesResponse._() : super();
+  factory HeightMapBytesResponse.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory HeightMapBytesResponse.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'HeightMapBytesResponse', createEmptyInstance: create)
+    ..a<$core.List<$core.int>>(1, _omitFieldNames ? '' : 'heightMap', $pb.PbFieldType.OY)
+    ..a<$core.double>(2, _omitFieldNames ? '' : 'position', $pb.PbFieldType.OF)
+    ..hasRequiredFields = false
+  ;
+
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
+  'Will be removed in next major version')
+  HeightMapBytesResponse clone() => HeightMapBytesResponse()..mergeFromMessage(this);
+  @$core.Deprecated(
+  'Using this can add significant overhead to your binary. '
+  'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
+  'Will be removed in next major version')
+  HeightMapBytesResponse copyWith(void Function(HeightMapBytesResponse) updates) => super.copyWith((message) => updates(message as HeightMapBytesResponse)) as HeightMapBytesResponse;
+
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  static HeightMapBytesResponse create() => HeightMapBytesResponse._();
+  HeightMapBytesResponse createEmptyInstance() => create();
+  static $pb.PbList<HeightMapBytesResponse> createRepeated() => $pb.PbList<HeightMapBytesResponse>();
+  @$core.pragma('dart2js:noInline')
+  static HeightMapBytesResponse getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<HeightMapBytesResponse>(create);
+  static HeightMapBytesResponse? _defaultInstance;
+
+  /// Since there're no multi-dimensional arrays in protobuf, row by row are returned, i.e. there will be HeightMapRequest.height rows
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get heightMap => $_getN(0);
+  @$pb.TagNumber(1)
+  set heightMap($core.List<$core.int> v) { $_setBytes(0, v); }
+  @$pb.TagNumber(1)
+  $core.bool hasHeightMap() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearHeightMap() => clearField(1);
 
   /// Position that was used during last generation
   @$pb.TagNumber(2)
