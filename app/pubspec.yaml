@@ -21,5 +21,10 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  fonts:
+    - family: Fraps
+      fonts:
+        - asset: assets/fraps.otf
   assets:
     - assets/
+  

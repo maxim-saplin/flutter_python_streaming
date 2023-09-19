@@ -6,13 +6,18 @@ import 'package:app/grpc_generated/client.dart';
 import 'package:app/grpc_generated/init_py.dart';
 import 'package:app/grpc_generated/init_py_native.dart';
 import 'package:grpc/grpc.dart';
-import 'dart:math';
 import 'dart:ui' as ui;
 
 import 'grpc_generated/set_generator.pbgrpc.dart';
 
-const threshold = 100;
-const position = 0.5;
+// Config the looks of Julia set
+const threshold = 100; // Must not be larger than 255
+const initialPosition = 0.5; // any number, full period is 1.0
+
+// Global state, better keep it somewhere else rather than in global vars
+int lastFrameReceivedMicro = 0;
+int previousFrameReceivedMicro = 0;
+Stopwatch sw = Stopwatch()..start();
 
 Future<void> pyInitResult = Future(() => null);
 
@@ -72,15 +77,23 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
               alignment: Alignment.center,
               children: [
                 _Fractals(
-                    values: heightValues,
-                    width: lastWidth,
-                    height: lastHeight,
-                    pixelRatio: pixelRatio),
+                  values: heightValues,
+                  width: lastWidth,
+                  height: lastHeight,
+                  pixelRatio: pixelRatio,
+                  threshold: threshold,
+                ),
                 if (screenState == ScreenStates.loading)
                   const Positioned(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 6)),
+                if (screenState == ScreenStates.animating)
+                  Positioned(
+                      left: 15,
+                      top: 15,
+                      child: _FpsCounter(
+                          lastFrameReceivedMicro - previousFrameReceivedMicro)),
                 Positioned(
                     top: 15,
                     child: Text(
@@ -134,6 +147,9 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
                                     'Invalid length of height map', context);
                               }
                               position = value.position;
+                              previousFrameReceivedMicro =
+                                  lastFrameReceivedMicro;
+                              lastFrameReceivedMicro = sw.elapsedMicroseconds;
                               _setScreenState(ScreenStates.animating);
                             },
                             cancelOnError: true,
@@ -175,6 +191,81 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
         .showSnackBar(SnackBar(content: Text('An error occured\n$error')));
   }
 }
+
+// Doesn't account for rendering on the client side, might be added
+// via WidgetsBinding.instance.addPostFrameCallback, though when
+// testing on Desktop this part seems to be ~5% of total time, can be ignored
+class _FpsCounter extends StatefulWidget {
+  const _FpsCounter(this.timeBetweenFramesMicro);
+
+  final int timeBetweenFramesMicro;
+
+  @override
+  State<_FpsCounter> createState() => _FpsCounterState();
+}
+
+class _FpsCounterState extends State<_FpsCounter> {
+  // Use avg on the last few fps to have some intertia
+  final List<double> _fpsCounts = List<double>.filled(7, 1.0);
+  int _curr = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    double fps = 1000000 / widget.timeBetweenFramesMicro;
+
+    _fpsCounts[_curr] = fps;
+    _curr++;
+    if (_curr >= _fpsCounts.length) {
+      _curr = 0;
+    }
+
+    return Text(
+        (_fpsCounts.reduce((a, b) => a + b) / _fpsCounts.length)
+            .toStringAsFixed(1),
+        style: const TextStyle(fontFamily: 'Fraps', fontSize: 24));
+  }
+}
+
+// // FPS reportted by Flutter diagnostics, showed high FPS (hundreds of FPS),
+// // Apparently local rendering is quick, no point using it
+// class _FpsCounterFlutter extends StatefulWidget {
+//   const _FpsCounterFlutter();
+
+//   @override
+//   State<_FpsCounterFlutter> createState() => _FpsCounterFlutterState();
+// }
+
+// class _FpsCounterFlutterState extends State<_FpsCounterFlutter> {
+//   final List<double> _fpsCounts = List<double>.filled(10, 0.0);
+//   int _curr = 0;
+
+//   @override
+//   void initState() {
+//     super.initState();
+
+//     WidgetsBinding.instance.addTimingsCallback((timings) {
+//       double fps = 1000000 / timings.last.totalSpan.inMicroseconds;
+//       if (mounted) {
+//         setState(() {
+//           _fpsCounts[_curr] = fps;
+//           _curr++;
+//           if (_curr >= _fpsCounts.length) {
+//             _curr = 0;
+//           }
+//         });
+//       }
+//     });
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     double averageFps = _fpsCounts.isNotEmpty
+//         ? _fpsCounts.reduce((a, b) => a + b) / _fpsCounts.length
+//         : 0;
+
+//     return Text(averageFps.toStringAsFixed(1));
+//   }
+// }
 
 class _BottomPanel extends StatelessWidget {
   const _BottomPanel(
@@ -266,12 +357,14 @@ class _Fractals extends StatefulWidget {
       {required this.values,
       required this.width,
       required this.height,
-      required this.pixelRatio});
+      required this.pixelRatio,
+      required this.threshold});
 
   final List<int> values;
   final double width;
   final double height;
   final double pixelRatio;
+  final int threshold;
 
   @override
   State<_Fractals> createState() => _FractalsState();
@@ -292,7 +385,7 @@ class _FractalsState extends State<_Fractals> {
 
       if (widget.values.isNotEmpty &&
           widget.values.length == pWidth * pHeight) {
-        getImage(pWidth, pHeight, widget.values).then((value) {
+        getImage(pWidth, pHeight, widget.values, threshold - 1).then((value) {
           if (image != null) {
             image!.dispose();
             image = null;
@@ -303,18 +396,22 @@ class _FractalsState extends State<_Fractals> {
     }
   }
 
-  Future<ui.Image> getImage(int width, int height, List<int> values) async {
+  Future<ui.Image> getImage(
+      int width, int height, List<int> values, int maxVal) async {
     final pixelData = Uint32List(values.length);
 
     for (int y = 0; y < height; y++) {
       for (int x = 0; x < width; x++) {
         var pos = y * width + x;
-        var iter = values[pos] + 1;
+        var iter = (values[pos] + 1) * 255 ~/ maxVal;
         //pixelData[pos] = 0xFF000000 + iter + iter << 8 + iter << 16;
-        pixelData[pos] = 0xFF000000 +
-            255 * (1 + cos(3.32 * log(iter))) ~/ 2 +
-            (255 * 256 * (1 + cos(0.774 * log(iter))) ~/ 2) +
-            (255 * 256 * 256 * (1 + cos(0.412 * log(iter))) ~/ 2);
+        var diff = 0xFF - iter;
+        diff = diff | diff << 8 | diff << 16;
+        pixelData[pos] = 0xFF000000 | diff | 0xFF;
+        // pixelData[pos] = 0xFF000000 +
+        //     255 * (1 + cos(3.32 * log(iter))) ~/ 2 +
+        //     (255 * 256 * (1 + cos(0.774 * log(iter))) ~/ 2) +
+        //     (255 * 256 * 256 * (1 + cos(0.412 * log(iter))) ~/ 2);
       }
     }
 
@@ -325,7 +422,8 @@ class _FractalsState extends State<_Fractals> {
         .instantiateCodec(targetWidth: width, targetHeight: height);
     var frame = await codec.getNextFrame();
 
-    //buffer.dispose();
+    // TODO, check if it can be disposed without breaking image
+    buffer.dispose();
 
     return frame.image;
   }

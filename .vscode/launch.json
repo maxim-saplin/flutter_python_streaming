@@ -26,6 +26,18 @@
               ],
         },
         {
+            "name": "app (remote server, auto start)",
+            "type": "dart",
+            "request": "launch",
+            "program": "app/lib/main.dart",
+            "toolArgs": [
+                "--dart-define",
+                "useRemote=true",
+              ],
+            "preLaunchTask": "start server",
+            "postDebugTask": "stop server"
+        },
+        {
             "name": "app (bundled server)",
             "type": "dart",
             "request": "launch",
@@ -42,8 +54,8 @@
                 "--dart-define",
                 "port=8080",
               ],
-              "preLaunchTask": "start server",
-              "postDebugTask": "stop server"
+            "preLaunchTask": "start server",
+            "postDebugTask": "stop server"
         },
         {
             "name": "server.py",
