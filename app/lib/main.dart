@@ -15,7 +15,7 @@ const threshold = 100; // Must not be larger than 255
 const initialPosition = 0.5; // any number, full period is 1.0
 
 // Global state, better keep it somewhere else rather than in global vars
-int lastFrameReceivedMicro = 0;
+int lastFrameReceivedMicro = 10000;
 int previousFrameReceivedMicro = 0;
 Stopwatch sw = Stopwatch()..start();
 
@@ -72,101 +72,121 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
         theme: ThemeData.light(useMaterial3: true),
         home: Scaffold(
             body: LayoutBuilder(
-          builder: (context, constraints) => Stack(
-              fit: StackFit.expand,
-              alignment: Alignment.center,
-              children: [
-                _Fractals(
-                  values: heightValues,
-                  width: lastWidth,
-                  height: lastHeight,
-                  pixelRatio: pixelRatio,
-                  threshold: threshold,
-                ),
-                if (screenState == ScreenStates.loading)
-                  const Positioned(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 6)),
-                if (screenState == ScreenStates.animating)
-                  Positioned(
-                      left: 15,
-                      top: 15,
-                      child: _FpsCounter(
-                          lastFrameReceivedMicro - previousFrameReceivedMicro)),
-                Positioned(
-                    top: 15,
-                    child: Text(
-                        '${(lastWidth * pixelRatio).toInt()} x ${(lastHeight * pixelRatio).toInt()} · ${position.toStringAsFixed(2)}')),
-                Positioned(
-                    bottom: 15,
-                    child: _BottomPanel(
-                      screenState: screenState,
-                      error: error,
-                      onOneFrame: () {
-                        _prepBeforeGrpcCall(constraints, ScreenStates.loading);
-                        JuliaSetGeneratorServiceClient(getClientChannel())
-                            .getSetAsHeightMap(HeightMapRequest(
-                                width: (lastWidth * pixelRatio).toInt(),
-                                height: (lastHeight * pixelRatio).toInt(),
-                                threshold: threshold,
-                                position: position))
-                            .then((value) => setState(() {
-                                  heightValues = value.heightMap;
-                                  if (value.heightMap.length !=
-                                      (lastWidth * pixelRatio).toInt() *
-                                          (lastHeight * pixelRatio).toInt()) {
-                                    _onGrpcCallError(
-                                        'Invalid length of height map',
-                                        context);
-                                  }
-                                  position += 0.05;
-                                  _setScreenState(ScreenStates.ready);
-                                }))
-                            .onError((error, stackTrace) =>
-                                _onGrpcCallError(error.toString(), context));
-                      },
-                      onPlay: () {
-                        _prepBeforeGrpcCall(
-                            constraints, ScreenStates.animating);
-                        grpcStream =
-                            JuliaSetGeneratorServiceClient(getClientChannel())
-                                .getSetAsHeightMapStream(HeightMapRequest(
-                                    width: (lastWidth * pixelRatio).toInt(),
-                                    height: (lastHeight * pixelRatio).toInt(),
-                                    threshold: threshold,
-                                    position: position));
+                builder: (context, constraints) => SafeArea(
+                      child: Stack(
+                          fit: StackFit.expand,
+                          alignment: Alignment.center,
+                          children: [
+                            _Fractals(
+                              values: heightValues,
+                              width: lastWidth,
+                              height: lastHeight,
+                              pixelRatio: pixelRatio,
+                              threshold: threshold,
+                            ),
+                            if (screenState == ScreenStates.loading)
+                              const Positioned(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 6)),
+                            if (screenState == ScreenStates.animating)
+                              Positioned(
+                                  left: 15,
+                                  top: 15,
+                                  child: _FpsCounter(lastFrameReceivedMicro -
+                                      previousFrameReceivedMicro)),
+                            Positioned(
+                                top: 15,
+                                child: Text(
+                                    '${(lastWidth * pixelRatio).toInt()} x ${(lastHeight * pixelRatio).toInt()} · ${position.toStringAsFixed(2)}')),
+                            Positioned(
+                                bottom: 15,
+                                child: _BottomPanel(
+                                  screenState: screenState,
+                                  error: error,
+                                  onOneFrame: () {
+                                    _prepBeforeGrpcCall(
+                                        constraints, ScreenStates.loading);
+                                    JuliaSetGeneratorServiceClient(
+                                            getClientChannel())
+                                        .getSetAsHeightMap(HeightMapRequest(
+                                            width: (lastWidth * pixelRatio)
+                                                .toInt(),
+                                            height: (lastHeight * pixelRatio)
+                                                .toInt(),
+                                            threshold: threshold,
+                                            position: position))
+                                        .then((value) => setState(() {
+                                              heightValues = value.heightMap;
+                                              if (value.heightMap.length !=
+                                                  (lastWidth * pixelRatio)
+                                                          .toInt() *
+                                                      (lastHeight * pixelRatio)
+                                                          .toInt()) {
+                                                _onGrpcCallError(
+                                                    'Invalid length of height map',
+                                                    context);
+                                              }
+                                              position += 0.05;
+                                              _setScreenState(
+                                                  ScreenStates.ready);
+                                            }))
+                                        .onError((error, stackTrace) =>
+                                            _onGrpcCallError(
+                                                error.toString(), context));
+                                  },
+                                  onPlay: () {
+                                    _prepBeforeGrpcCall(
+                                        constraints, ScreenStates.animating);
+                                    grpcStream = JuliaSetGeneratorServiceClient(
+                                            getClientChannel())
+                                        .getSetAsHeightMapStream(
+                                            HeightMapRequest(
+                                                width: (lastWidth * pixelRatio)
+                                                    .toInt(),
+                                                height:
+                                                    (lastHeight * pixelRatio)
+                                                        .toInt(),
+                                                threshold: threshold,
+                                                position: position));
 
-                        grpcStream!.listen(
-                            (value) {
-                              heightValues = value.heightMap;
-                              if (value.heightMap.length !=
-                                  (lastWidth * pixelRatio).toInt() *
-                                      (lastHeight * pixelRatio).toInt()) {
-                                _onGrpcCallError(
-                                    'Invalid length of height map', context);
-                              }
-                              position = value.position;
-                              previousFrameReceivedMicro =
-                                  lastFrameReceivedMicro;
-                              lastFrameReceivedMicro = sw.elapsedMicroseconds;
-                              _setScreenState(ScreenStates.animating);
-                            },
-                            cancelOnError: true,
-                            onError: (error, stackTrace) {
-                              if (error is GrpcError && error.code == 1) {
-                                return; // grpc call canceled
-                              }
-                              _onGrpcCallError(error.toString(), context);
-                            });
-                      },
-                      onPause: () {
-                        grpcStream?.cancel();
-                        _setScreenState(ScreenStates.ready);
-                      },
-                    ))
-              ]),
-        )));
+                                    grpcStream!.listen(
+                                        (value) {
+                                          heightValues = value.heightMap;
+                                          if (value.heightMap.length !=
+                                              (lastWidth * pixelRatio).toInt() *
+                                                  (lastHeight * pixelRatio)
+                                                      .toInt()) {
+                                            _onGrpcCallError(
+                                                'Invalid length of height map',
+                                                context);
+                                          }
+                                          position = value.position;
+                                          previousFrameReceivedMicro =
+                                              lastFrameReceivedMicro;
+                                          lastFrameReceivedMicro =
+                                              sw.elapsedMicroseconds;
+                                          _setScreenState(
+                                              ScreenStates.animating);
+                                        },
+                                        cancelOnError: true,
+                                        onError: (error, stackTrace) {
+                                          if (error is GrpcError &&
+                                              error.code == 1) {
+                                            return; // grpc call canceled
+                                          }
+                                          _onGrpcCallError(
+                                              error.toString(), context);
+                                        });
+                                  },
+                                  onPause: () {
+                                    grpcStream?.cancel();
+                                    _setScreenState(ScreenStates.ready);
+                                  },
+                                ))
+                          ]),
+                    ))));
   }
 
   void _setScreenState(ScreenStates state) {
@@ -206,7 +226,7 @@ class _FpsCounter extends StatefulWidget {
 
 class _FpsCounterState extends State<_FpsCounter> {
   // Use avg on the last few fps to have some intertia
-  final List<double> _fpsCounts = List<double>.filled(7, 1.0);
+  final List<double> _fpsCounts = List<double>.filled(7, 10.0);
   int _curr = 0;
 
   @override
