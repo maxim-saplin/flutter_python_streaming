@@ -5,6 +5,27 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "app (remote server)",
+            "type": "dart",
+            "request": "launch",
+            "program": "app/lib/main.dart",
+            "toolArgs": [
+                "--dart-define",
+                "useRemote=true",
+              ],
+        },
+        {
+            "name": "app (remote server, profile)",
+            "type": "dart",
+            "request": "launch",
+            "program": "app/lib/main.dart",
+            "toolArgs": [
+                "--dart-define",
+                "useRemote=true",
+              ],
+              "flutterMode": "profile"
+        },
+        {
             "name": "app (remote server, release)",
             "type": "dart",
             "request": "launch",
@@ -14,16 +35,6 @@
                 "useRemote=true",
               ],
             "flutterMode": "release"
-        },
-        {
-            "name": "app (remote server)",
-            "type": "dart",
-            "request": "launch",
-            "program": "app/lib/main.dart",
-            "toolArgs": [
-                "--dart-define",
-                "useRemote=true",
-              ],
         },
         {
             "name": "app (remote server, auto start)",
@@ -56,6 +67,21 @@
               ],
             "preLaunchTask": "start server",
             "postDebugTask": "stop server"
+        },
+        {
+            "name": "web app (remote server, auto start, release)",
+            "request": "launch",
+            "program": "app/lib/main.dart",
+            "type": "dart",
+            "toolArgs": [
+                "--dart-define",
+                "useRemote=true",
+                "--dart-define",
+                "port=8080",
+              ],
+            "flutterMode": "release",
+            "preLaunchTask": "start server",
+            "postDebugTask": "stop server",
         },
         {
             "name": "server.py",

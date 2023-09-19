@@ -1,7 +1,8 @@
 from grpc_generated import set_generator_pb2, set_generator_pb2_grpc
 import numpy as np
+import grpc
 import time
-from numba import jit
+from numba import jit, njit, prange
 
 class JuliaSetGeneratorService(set_generator_pb2_grpc.JuliaSetGeneratorService):
     def GetSetAsHeightMap(self, request, context):
@@ -23,11 +24,19 @@ class JuliaSetGeneratorService(set_generator_pb2_grpc.JuliaSetGeneratorService):
             print(f"{round(elapsed_time * 1000, 2)}ms")
             result = set_generator_pb2.HeightMapResponse(height_map=height_map.tolist(), position=position)
             yield result
-            
-    def GetSetAsHeightMapAsBytesStream(self, request, context):
+
+    # 4 times less data to be transmitted as 1 pixel is encoded with 1 byte instrad of 4 with the above method
+    def GetSetAsHeightMapAsBytesStream(self, request: set_generator_pb2.HeightMapRequest, context: grpc.RpcContext):
         position  = request.position
         while True:
-            position += 0.02
+            fraction_part = position % 1
+            # Slowdown at interesting region
+            if fraction_part > 0.65 and fraction_part < 0.75:
+                position += 0.001
+            elif fraction_part > 0.45 and fraction_part < 0.65:
+                position += 0.05
+            else:
+                position += 0.01
             start_time = time.time() 
             height_map = _GetSetAsHeightMap(request.width, request.height, request.threshold, position)
             elapsed_time = time.time() - start_time
@@ -35,7 +44,7 @@ class JuliaSetGeneratorService(set_generator_pb2_grpc.JuliaSetGeneratorService):
             result = set_generator_pb2.HeightMapBytesResponse(height_map=height_map.tobytes(), position=position)
             yield result
         
-@jit(nopython=True)
+@njit(nopython=True, nogil=True, parallel=True)
 def _GetSetAsHeightMap(widthPoints: int, heightPoints: int, threshold: int, position: float):
     result = np.empty(widthPoints * heightPoints, dtype=np.uint8)
     width, height = 4, 4*heightPoints/widthPoints  # fix aspect ratio
@@ -50,14 +59,14 @@ def _GetSetAsHeightMap(widthPoints: int, heightPoints: int, threshold: int, posi
     a = 2*np.pi*position;
     cx, cy = r * np.cos(a), r * np.sin(a)  # the initial c number
 
-    for i in range(heightPoints):
-        for j in range(widthPoints):
+    for i in prange(heightPoints):
+        for j in prange(widthPoints):
             result[i*widthPoints+j] = _check_in_julia_set(re[j], im[i], cx, cy, threshold)
         
     return result
 
-@jit(nopython=True)
-def _check_in_julia_set(zx, zy, const_x, const_y, threshold):
+@njit(nopython=True, nogil=True)
+def _check_in_julia_set(zx: int, zy: int, const_x: int, const_y: int, threshold: int):
     """Calculates whether the number z[0] = zx + i*zy with a constant c = x + i*y
     belongs to the Julia set. In order to belong, the sequence 
     z[i + 1] = z[i]**2 + c, must not diverge after 'threshold' number of steps.

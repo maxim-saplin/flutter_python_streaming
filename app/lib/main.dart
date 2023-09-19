@@ -1,14 +1,12 @@
 import 'dart:async';
 import 'dart:typed_data';
-import 'dart:ui';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:app/grpc_generated/client.dart';
 import 'package:app/grpc_generated/init_py.dart';
 import 'package:app/grpc_generated/init_py_native.dart';
 import 'package:grpc/grpc.dart';
 import 'package:popover/popover.dart';
-import 'dart:ui' as ui;
-
 import 'grpc_generated/set_generator.pbgrpc.dart';
 
 // Config the looks of Julia set
@@ -19,6 +17,7 @@ const initialPosition = 0.5; // any number, full period is 1.0
 int lastFrameReceivedMicro = 10000;
 int previousFrameReceivedMicro = 0;
 Stopwatch sw = Stopwatch()..start();
+int frameCount = 0;
 bool useByteStreaming =
     false; // choose which streaming method to use, byte vs int32
 
@@ -42,7 +41,7 @@ enum ScreenStates { notReady, ready, loading, animating }
 
 class MainAppState extends State<MainApp> with WidgetsBindingObserver {
   @override
-  Future<AppExitResponse> didRequestAppExit() {
+  Future<ui.AppExitResponse> didRequestAppExit() {
     shutdownPyIfAny();
     return super.didRequestAppExit();
   }
@@ -63,10 +62,10 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
     pixelRatio = WidgetsBinding
         .instance.platformDispatcher.displays.first.devicePixelRatio;
 
-    pyInitResult
-        .onError(
-            (error, stackTrace) => setState(() => error = error.toString()))
-        .whenComplete(() => setState(() => screenState = ScreenStates.ready));
+    pyInitResult.then((v) => _setScreenState(ScreenStates.ready),
+        onError: (error, stackTrace) {
+      setState(() => this.error = error.toString());
+    });
   }
 
   @override
@@ -93,16 +92,22 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
                                   height: 20,
                                   child: CircularProgressIndicator(
                                       strokeWidth: 6)),
-                            if (screenState == ScreenStates.animating)
-                              Positioned(
-                                  left: 15,
-                                  top: 15,
-                                  child: _FpsCounter(lastFrameReceivedMicro -
-                                      previousFrameReceivedMicro)),
                             Positioned(
+                                left: 15,
+                                top: 15,
+                                child: _FpsCounter(
+                                    lastFrameReceivedMicro -
+                                        previousFrameReceivedMicro,
+                                    frameCount,
+                                    sw.elapsedMilliseconds,
+                                    screenState == ScreenStates.animating)),
+                            Positioned(
+                                right: 15,
                                 top: 15,
                                 child: Text(
-                                    '${(lastWidth * pixelRatio).toInt()} x ${(lastHeight * pixelRatio).toInt()} · ${position.toStringAsFixed(2)}')),
+                                    '${(lastWidth * pixelRatio).toInt()} x '
+                                    '${(lastHeight * pixelRatio).toInt()} · '
+                                    '${position.toStringAsFixed(2)}')),
                             Positioned(
                                 bottom: 15,
                                 child: _BottomPanel(
@@ -125,9 +130,12 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
     });
   }
 
+  /// Set lastWidth, lastHeight, reset stopwatch and frame counter
   void _prepBeforeGrpcCall(BoxConstraints constraints, ScreenStates state) {
     lastWidth = constraints.maxWidth;
     lastHeight = constraints.maxHeight;
+    sw.reset();
+    frameCount = 0;
     setState(() {
       screenState = state;
     });
@@ -181,6 +189,7 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
             _onGrpcCallError('Invalid length of height map', context);
           }
           position = value.position;
+          frameCount++;
           previousFrameReceivedMicro = lastFrameReceivedMicro;
           lastFrameReceivedMicro = sw.elapsedMicroseconds;
           _setScreenState(ScreenStates.animating);
@@ -207,9 +216,13 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
 // via WidgetsBinding.instance.addPostFrameCallback, though when
 // testing on Desktop this part seems to be ~5% of total time, can be ignored
 class _FpsCounter extends StatefulWidget {
-  const _FpsCounter(this.timeBetweenFramesMicro);
+  const _FpsCounter(this.timeBetweenFramesMicro, this.totalFrameCount,
+      this.totalElapsedMs, this.showCurrent);
 
   final int timeBetweenFramesMicro;
+  final int totalFrameCount;
+  final int totalElapsedMs;
+  final bool showCurrent;
 
   @override
   State<_FpsCounter> createState() => _FpsCounterState();
@@ -231,9 +244,8 @@ class _FpsCounterState extends State<_FpsCounter> {
     }
 
     return Text(
-        (_fpsCounts.reduce((a, b) => a + b) / _fpsCounts.length)
-            .toStringAsFixed(1),
-        style: const TextStyle(fontFamily: 'Fraps', fontSize: 24));
+        '${widget.totalFrameCount == 0 ? '' : 'AVG ${(widget.totalFrameCount / widget.totalElapsedMs * 1000).toStringAsFixed(1)}'}${widget.showCurrent ? ' NOW ${(_fpsCounts.reduce((a, b) => a + b) / _fpsCounts.length).toStringAsFixed(1)}' : ''}',
+        style: const TextStyle(fontFamily: 'Fraps', fontSize: 20));
   }
 }
 
@@ -312,7 +324,7 @@ class _BottomPanel extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 6))
                     : (error.isNotEmpty
                         ? Tooltip(
-                            message: 'Error: $error}',
+                            message: 'Error: $error',
                             child: const Icon(
                               Icons.circle,
                               color: Colors.red,
@@ -501,9 +513,9 @@ class _FractalsState extends State<_Fractals> {
     }
 
     var buffer =
-        await ImmutableBuffer.fromUint8List(pixelData.buffer.asUint8List());
-    var codec = await ImageDescriptor.raw(buffer,
-            width: width, height: height, pixelFormat: PixelFormat.rgba8888)
+        await ui.ImmutableBuffer.fromUint8List(pixelData.buffer.asUint8List());
+    var codec = await ui.ImageDescriptor.raw(buffer,
+            width: width, height: height, pixelFormat: ui.PixelFormat.rgba8888)
         .instantiateCodec(targetWidth: width, targetHeight: height);
     var frame = await codec.getNextFrame();
 
