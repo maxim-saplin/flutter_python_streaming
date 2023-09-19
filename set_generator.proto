@@ -1,6 +1,10 @@
 syntax = "proto3";
 
 
+// A service that generates Julia set in the complex plane around point (0, 0) and in range +2/-2
+// Escape algorithim is used whih tests for each individual point if it escapes or not.
+// The threshold parameter passed in request controls the maximum number of iterations before point is considered not escaped.
+// The results is represented as height map, i.e. the number of iterations for each point.
 service JuliaSetGeneratorService {
     // Accepts Width and Height parameters, returns a 'height map', i.e. for each pixel how many iterations happened
     // before the algo stopped checking for divergance. The more iterations, the higher the magnitude

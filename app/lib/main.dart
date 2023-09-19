@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'package:app/julia.dart';
 import 'package:flutter/material.dart';
 import 'package:app/grpc_generated/client.dart';
 import 'package:app/grpc_generated/init_py.dart';
@@ -13,15 +14,14 @@ import 'grpc_generated/set_generator.pbgrpc.dart';
 const threshold = 100; // Must not be larger than 255
 const initialPosition = 0.5; // any number, full period is 1.0
 
-// Global state, better keep it somewhere else rather than in global vars
+// Global state, in prod app it's better to keep it somewhere else (e.g. Provider) rather than in global vars
 int lastFrameReceivedMicro = 10000;
 int previousFrameReceivedMicro = 0;
 Stopwatch sw = Stopwatch()..start();
 int frameCount = 0;
-bool useByteStreaming =
-    false; // choose which streaming method to use, byte vs int32
+Modes mode = Modes.grpcRepeatedInt32;
 
-Future<void> pyInitResult = Future(() => null);
+enum Modes { grpcRepeatedInt32, grpcBytes, dartUiThread }
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +29,8 @@ void main() {
 
   runApp(const MainApp());
 }
+
+Future<void> pyInitResult = Future(() => null);
 
 class MainApp extends StatefulWidget {
   const MainApp({Key? key}) : super(key: key);
@@ -51,7 +53,7 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
   String error = '';
   double lastWidth = 0;
   double lastHeight = 0;
-  ResponseStream? grpcStream;
+  Stream? juliaSetStream;
   ScreenStates screenState = ScreenStates.notReady;
   List<int> heightValues = [];
 
@@ -96,8 +98,6 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
                                 left: 15,
                                 top: 15,
                                 child: _FpsCounter(
-                                    lastFrameReceivedMicro -
-                                        previousFrameReceivedMicro,
                                     frameCount,
                                     sw.elapsedMilliseconds,
                                     screenState == ScreenStates.animating)),
@@ -116,7 +116,12 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
                                   onOneFrame: () => _onOneFrame(constraints),
                                   onPlay: () => _onPlay(constraints),
                                   onPause: () {
-                                    grpcStream?.cancel();
+                                    if (juliaSetStream is ResponseStream) {
+                                      (juliaSetStream as ResponseStream)
+                                          .cancel();
+                                    } else {
+                                      cancelSetGeneration();
+                                    }
                                     _setScreenState(ScreenStates.ready);
                                   },
                                 ))
@@ -168,21 +173,30 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
     var pWidth = (lastWidth * pixelRatio).toInt();
     var pHeight = (lastHeight * pixelRatio).toInt();
 
-    grpcStream = useByteStreaming
-        ? JuliaSetGeneratorServiceClient(getClientChannel())
+    switch (mode) {
+      case Modes.dartUiThread:
+        juliaSetStream = getSetAsHeightMapAsBytesStream(
+            pWidth, pHeight, threshold, position);
+        break;
+      case Modes.grpcBytes:
+        juliaSetStream = JuliaSetGeneratorServiceClient(getClientChannel())
             .getSetAsHeightMapAsBytesStream(HeightMapRequest(
                 width: (lastWidth * pixelRatio).toInt(),
                 height: (lastHeight * pixelRatio).toInt(),
                 threshold: threshold,
-                position: position))
-        : JuliaSetGeneratorServiceClient(getClientChannel())
+                position: position));
+        break;
+      case Modes.grpcRepeatedInt32:
+        juliaSetStream = JuliaSetGeneratorServiceClient(getClientChannel())
             .getSetAsHeightMapStream(HeightMapRequest(
                 width: (lastWidth * pixelRatio).toInt(),
                 height: (lastHeight * pixelRatio).toInt(),
                 threshold: threshold,
                 position: position));
+        break;
+    }
 
-    grpcStream!.listen(
+    juliaSetStream!.listen(
         (value) {
           heightValues = value.heightMap;
           if (value.heightMap.length != pWidth * pHeight) {
@@ -212,14 +226,12 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
   }
 }
 
-// Doesn't account for rendering on the client side, might be added
-// via WidgetsBinding.instance.addPostFrameCallback, though when
-// testing on Desktop this part seems to be ~5% of total time, can be ignored
+// Doesn't account for rendering a frame side
+// Shouldn't be a problm since rendering/rastering is happening in parallel thread and fast
 class _FpsCounter extends StatefulWidget {
-  const _FpsCounter(this.timeBetweenFramesMicro, this.totalFrameCount,
-      this.totalElapsedMs, this.showCurrent);
+  const _FpsCounter(
+      this.totalFrameCount, this.totalElapsedMs, this.showCurrent);
 
-  final int timeBetweenFramesMicro;
   final int totalFrameCount;
   final int totalElapsedMs;
   final bool showCurrent;
@@ -230,12 +242,15 @@ class _FpsCounter extends StatefulWidget {
 
 class _FpsCounterState extends State<_FpsCounter> {
   // Use avg on the last few fps to have some intertia
-  final List<double> _fpsCounts = List<double>.filled(7, 10.0);
+  final List<double> _fpsCounts = List<double>.filled(3, 1.0);
   int _curr = 0;
+  int _prevElapsedMs = 0;
 
   @override
   Widget build(BuildContext context) {
-    double fps = 1000000 / widget.timeBetweenFramesMicro;
+    double fps = 1000 / (widget.totalElapsedMs - _prevElapsedMs);
+
+    _prevElapsedMs = widget.totalElapsedMs;
 
     _fpsCounts[_curr] = fps;
     _curr++;
@@ -359,7 +374,7 @@ class _BottomPanel extends StatelessWidget {
                                     // onPop: () => print('Popover was popped!'),
                                     direction: PopoverDirection.bottom,
                                     width: 380,
-                                    height: 160,
+                                    height: 225,
                                   );
                                 },
                               ),
@@ -392,7 +407,7 @@ class _BottomPanel extends StatelessWidget {
     return TextSpan(
       children: [
         const TextSpan(
-          text: 'Using ',
+          text: 'Connected to ',
         ),
         TextSpan(
           text: '$defaultHost:$defaultPort',
@@ -402,7 +417,7 @@ class _BottomPanel extends StatelessWidget {
         ),
         TextSpan(
           text:
-              ', ${localPyStartSkipped ? 'skipped launching local server' : 'launched local server'}',
+              ', ${localPyStartSkipped ? 'skipped launching bundled server' : 'launched bundled server'}',
         ),
       ],
     );
@@ -433,16 +448,50 @@ class _PanelPopupState extends State<_PanelPopup> {
                   const SizedBox(
                     height: 16,
                   ),
-                  Row(
+                  Column(
                     children: [
-                      Checkbox(
-                          value: useByteStreaming,
-                          onChanged: (value) {
-                            setState(() {
-                              useByteStreaming = value ?? false;
-                            });
-                          }),
-                      const Text('Use byte stream instead of int32')
+                      Row(
+                        children: [
+                          Radio(
+                            value: Modes.grpcRepeatedInt32,
+                            groupValue: mode,
+                            onChanged: (value) {
+                              setState(() {
+                                mode = value as Modes;
+                              });
+                            },
+                          ),
+                          const Text('Use "repeated int32" stream'),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Radio(
+                            value: Modes.grpcBytes,
+                            groupValue: mode,
+                            onChanged: (value) {
+                              setState(() {
+                                mode = value as Modes;
+                              });
+                            },
+                          ),
+                          const Text('Use "bytes" stream'),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Radio(
+                            value: Modes.dartUiThread,
+                            groupValue: mode,
+                            onChanged: (value) {
+                              setState(() {
+                                mode = value as Modes;
+                              });
+                            },
+                          ),
+                          const Text('Use Dart native implementation'),
+                        ],
+                      ),
                     ],
                   )
                 ]))));

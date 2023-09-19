@@ -1,5 +1,5 @@
 name: app
-description: A new Flutter project.
+description: Julia Set Generator, Flutter and Python Integration example.
 publish_to: 'none'
 version: 0.1.0
 
