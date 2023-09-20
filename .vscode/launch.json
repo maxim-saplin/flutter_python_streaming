@@ -49,6 +49,13 @@
             //"postDebugTask": "stop server" // this one kills Flutter UI when doing hot restart, better keep server running to keep host restart working
         },
         {
+            "name": "app (bundled server, release)",
+            "type": "dart",
+            "request": "launch",
+            "program": "app/lib/main.dart",
+            "flutterMode": "release"
+        },
+        {
             "name": "app (bundled server)",
             "type": "dart",
             "request": "launch",

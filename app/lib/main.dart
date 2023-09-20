@@ -1,14 +1,13 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
-import 'package:app/julia.dart';
 import 'package:flutter/material.dart';
-import 'package:app/grpc_generated/client.dart';
-import 'package:app/grpc_generated/init_py.dart';
-import 'package:app/grpc_generated/init_py_native.dart';
 import 'package:grpc/grpc.dart';
 import 'package:popover/popover.dart';
-import 'grpc_generated/set_generator.pbgrpc.dart';
+
+import 'grpc_generated/client.dart';
+import 'grpc_generated/init_py.dart';
+import 'julia_service.dart' as service;
 
 // Config the looks of Julia set
 const threshold = 100; // Must not be larger than 255
@@ -19,9 +18,7 @@ int lastFrameReceivedMicro = 10000;
 int previousFrameReceivedMicro = 0;
 Stopwatch sw = Stopwatch()..start();
 int frameCount = 0;
-Modes mode = Modes.grpcRepeatedInt32;
-
-enum Modes { grpcRepeatedInt32, grpcBytes, dartUiThread }
+service.FetchModes fetchMode = service.FetchModes.grpcRepeatedInt32;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,9 +50,9 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
   String error = '';
   double lastWidth = 0;
   double lastHeight = 0;
-  Stream? juliaSetStream;
   ScreenStates screenState = ScreenStates.notReady;
   List<int> heightValues = [];
+  service.CancelationToken cancelationToken = () {};
 
   @override
   void initState() {
@@ -115,13 +112,13 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
                                   error: error,
                                   onOneFrame: () => _onOneFrame(constraints),
                                   onPlay: () => _onPlay(constraints),
+                                  onPlayLongTap: () {
+                                    // reset posotion and start over
+                                    position = 0;
+                                    _onPlay(constraints);
+                                  },
                                   onPause: () {
-                                    if (juliaSetStream is ResponseStream) {
-                                      (juliaSetStream as ResponseStream)
-                                          .cancel();
-                                    } else {
-                                      cancelSetGeneration();
-                                    }
+                                    cancelationToken.call();
                                     _setScreenState(ScreenStates.ready);
                                   },
                                 ))
@@ -146,22 +143,28 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
     });
   }
 
-  void _onOneFrame(BoxConstraints constraints) {
-    _prepBeforeGrpcCall(constraints, ScreenStates.loading);
+  /// Return the width and height in pixels based on device pixel ratio
+  (int, int) _getPixelWH() {
     var pWidth = (lastWidth * pixelRatio).toInt();
     var pHeight = (lastHeight * pixelRatio).toInt();
-    JuliaSetGeneratorServiceClient(getClientChannel())
-        .getSetAsHeightMap(HeightMapRequest(
-            width: pWidth,
-            height: pHeight,
-            threshold: threshold,
-            position: position))
+    return (pWidth, pHeight);
+  }
+
+  void _onOneFrame(BoxConstraints constraints) {
+    _prepBeforeGrpcCall(constraints, ScreenStates.loading);
+    var (pWidth, pHeight) = _getPixelWH();
+    service
+        .getSetAsHeightMap(
+            widthPixels: pWidth,
+            heightPixels: pHeight,
+            iterationThreshold: threshold,
+            startPosition: position)
         .then((value) => setState(() {
               heightValues = value.heightMap;
               if (value.heightMap.length != pWidth * pHeight) {
                 _onGrpcCallError('Invalid length of height map', context);
               }
-              position += 0.05;
+              position += 0.02;
               _setScreenState(ScreenStates.ready);
             }))
         .onError(
@@ -170,33 +173,18 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
 
   void _onPlay(BoxConstraints constraints) {
     _prepBeforeGrpcCall(constraints, ScreenStates.animating);
-    var pWidth = (lastWidth * pixelRatio).toInt();
-    var pHeight = (lastHeight * pixelRatio).toInt();
+    var (pWidth, pHeight) = _getPixelWH();
 
-    switch (mode) {
-      case Modes.dartUiThread:
-        juliaSetStream = getSetAsHeightMapAsBytesStream(
-            pWidth, pHeight, threshold, position);
-        break;
-      case Modes.grpcBytes:
-        juliaSetStream = JuliaSetGeneratorServiceClient(getClientChannel())
-            .getSetAsHeightMapAsBytesStream(HeightMapRequest(
-                width: (lastWidth * pixelRatio).toInt(),
-                height: (lastHeight * pixelRatio).toInt(),
-                threshold: threshold,
-                position: position));
-        break;
-      case Modes.grpcRepeatedInt32:
-        juliaSetStream = JuliaSetGeneratorServiceClient(getClientChannel())
-            .getSetAsHeightMapStream(HeightMapRequest(
-                width: (lastWidth * pixelRatio).toInt(),
-                height: (lastHeight * pixelRatio).toInt(),
-                threshold: threshold,
-                position: position));
-        break;
-    }
+    var (juliaStream, cn) = service.streamSetAsHeightMap(
+        widthPixels: pWidth,
+        heightPixels: pHeight,
+        iterationThreshold: threshold,
+        startPosition: position,
+        fetchMode: fetchMode);
 
-    juliaSetStream!.listen(
+    cancelationToken = cn;
+
+    juliaStream.listen(
         (value) {
           heightValues = value.heightMap;
           if (value.heightMap.length != pWidth * pHeight) {
@@ -264,59 +252,20 @@ class _FpsCounterState extends State<_FpsCounter> {
   }
 }
 
-// // FPS reportted by Flutter diagnostics, showed high FPS (hundreds of FPS),
-// // Apparently local rendering is quick, no point using it
-// class _FpsCounterFlutter extends StatefulWidget {
-//   const _FpsCounterFlutter();
-
-//   @override
-//   State<_FpsCounterFlutter> createState() => _FpsCounterFlutterState();
-// }
-
-// class _FpsCounterFlutterState extends State<_FpsCounterFlutter> {
-//   final List<double> _fpsCounts = List<double>.filled(10, 0.0);
-//   int _curr = 0;
-
-//   @override
-//   void initState() {
-//     super.initState();
-
-//     WidgetsBinding.instance.addTimingsCallback((timings) {
-//       double fps = 1000000 / timings.last.totalSpan.inMicroseconds;
-//       if (mounted) {
-//         setState(() {
-//           _fpsCounts[_curr] = fps;
-//           _curr++;
-//           if (_curr >= _fpsCounts.length) {
-//             _curr = 0;
-//           }
-//         });
-//       }
-//     });
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     double averageFps = _fpsCounts.isNotEmpty
-//         ? _fpsCounts.reduce((a, b) => a + b) / _fpsCounts.length
-//         : 0;
-
-//     return Text(averageFps.toStringAsFixed(1));
-//   }
-// }
-
 class _BottomPanel extends StatelessWidget {
   const _BottomPanel(
       {required this.screenState,
       this.error = '',
       required this.onOneFrame,
       required this.onPlay,
+      required this.onPlayLongTap,
       required this.onPause});
 
   final ScreenStates screenState;
   final String error;
   final Function onOneFrame;
   final Function onPlay;
+  final Function onPlayLongTap;
   final Function onPause;
 
   @override
@@ -371,7 +320,6 @@ class _BottomPanel extends StatelessWidget {
                                         const Duration(milliseconds: 100),
                                     bodyBuilder: (context) => _PanelPopup(
                                         statusText: _getStatusText()),
-                                    // onPop: () => print('Popover was popped!'),
                                     direction: PopoverDirection.bottom,
                                     width: 380,
                                     height: 225,
@@ -398,7 +346,9 @@ class _BottomPanel extends StatelessWidget {
                         : () => onPlay(),
                     child: screenState == ScreenStates.animating
                         ? const Icon(Icons.pause_rounded)
-                        : const Icon(Icons.play_arrow_rounded))
+                        : GestureDetector(
+                            onLongPress: () => onPlayLongTap(),
+                            child: const Icon(Icons.play_arrow_rounded)))
               ]),
         ));
   }
@@ -437,7 +387,7 @@ class _PanelPopupState extends State<_PanelPopup> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(18),
         child: Material(
             elevation: 10,
             borderRadius: const BorderRadius.all(Radius.circular(10)),
@@ -445,52 +395,55 @@ class _PanelPopupState extends State<_PanelPopup> {
                 padding: const EdgeInsets.all(16),
                 child: Column(children: [
                   Text.rich(widget.statusText),
-                  const SizedBox(
-                    height: 16,
-                  ),
                   Column(
                     children: [
-                      Row(
-                        children: [
-                          Radio(
-                            value: Modes.grpcRepeatedInt32,
-                            groupValue: mode,
+                      SizedBox(
+                          height: 36,
+                          child: RadioListTile<service.FetchModes>(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('Use "repeated int32" stream',
+                                textScaleFactor: 1.1),
+                            value: service.FetchModes.grpcRepeatedInt32,
+                            groupValue: fetchMode,
                             onChanged: (value) {
                               setState(() {
-                                mode = value as Modes;
+                                fetchMode = value as service.FetchModes;
                               });
                             },
-                          ),
-                          const Text('Use "repeated int32" stream'),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          Radio(
-                            value: Modes.grpcBytes,
-                            groupValue: mode,
+                          )),
+                      SizedBox(
+                          height: 36,
+                          child: RadioListTile<service.FetchModes>(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            title: const Text('Use "bytes" stream',
+                                textScaleFactor: 1.1),
+                            value: service.FetchModes.grpcBytes,
+                            groupValue: fetchMode,
                             onChanged: (value) {
                               setState(() {
-                                mode = value as Modes;
+                                fetchMode = value as service.FetchModes;
                               });
                             },
+                          )),
+                      SizedBox(
+                        height: 36,
+                        child: RadioListTile<service.FetchModes>(
+                          dense: true,
+                          title: const Text(
+                            'Use Dart native implementation',
+                            textScaleFactor: 1.1,
                           ),
-                          const Text('Use "bytes" stream'),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          Radio(
-                            value: Modes.dartUiThread,
-                            groupValue: mode,
-                            onChanged: (value) {
-                              setState(() {
-                                mode = value as Modes;
-                              });
-                            },
-                          ),
-                          const Text('Use Dart native implementation'),
-                        ],
+                          contentPadding: EdgeInsets.zero,
+                          value: service.FetchModes.dartUiThread,
+                          groupValue: fetchMode,
+                          onChanged: (value) {
+                            setState(() {
+                              fetchMode = value as service.FetchModes;
+                            });
+                          },
+                        ),
                       ),
                     ],
                   )
