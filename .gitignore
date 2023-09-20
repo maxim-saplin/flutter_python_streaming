@@ -28,3 +28,4 @@ doc/api/
 .cptx/
 set_generator/__pycache__/julia_set.cpython-311.pyc
 set_generator/dist/
+.DS_Store
