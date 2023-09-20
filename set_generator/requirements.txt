@@ -1,4 +1,4 @@
-
 grpcio
-
 grpcio-health-checking
+numpy
+numba
