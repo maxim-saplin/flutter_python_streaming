@@ -44,16 +44,8 @@ Future<HeightMapResponse> getSetAsHeightMap(
               position: startPosition));
       cancelationToken = () => (stream as ResponseStream).cancel();
       break;
-    case FetchModes.grpcBytes:
-      stream = JuliaSetGeneratorServiceClient(getClientChannel())
-          .getSetAsHeightMapAsBytesStream(HeightMapRequest(
-              width: widthPixels,
-              height: heightPixels,
-              threshold: iterationThreshold,
-              position: startPosition));
-      cancelationToken = () => (stream as ResponseStream).cancel();
-      break;
     case FetchModes.dartUiThread:
+    case FetchModes.grpcBytes:
       stream = getSetAsHeightMapAsBytesStream(
           widthPixels, heightPixels, iterationThreshold, startPosition);
       cancelationToken = () => cancelSetGeneration();

@@ -9,7 +9,7 @@ void cancelSetGeneration() {
   _canceled = true;
 }
 
-Stream<HeightMapBytesResponse> getSetAsHeightMapAsBytesStream(
+Stream<HeightMapResponse> getSetAsHeightMapAsBytesStream(
     int widthPoints, int heightPoints, int threshold, double position) async* {
   _position = position;
   _canceled = false;
@@ -22,7 +22,7 @@ Stream<HeightMapBytesResponse> getSetAsHeightMapAsBytesStream(
     } else {
       _position += 0.01;
     }
-    var result = HeightMapBytesResponse(
+    var result = HeightMapResponse(
         heightMap:
             _getSetAsHeightMap(widthPoints, heightPoints, threshold, _position),
         position: _position);

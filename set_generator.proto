@@ -11,9 +11,6 @@ service JuliaSetGeneratorService {
 
     // Infinetly streams frames 
     rpc GetSetAsHeightMapStream(HeightMapRequest) returns (stream HeightMapResponse) {}
-
-    // Infinetly streams frames, use bytes rather than list of int32
-    rpc GetSetAsHeightMapAsBytesStream(HeightMapRequest) returns (stream HeightMapBytesResponse) {}
 }
 
 // Request Julia set height map (iterations per pixel) of a given area
@@ -32,16 +29,6 @@ message HeightMapRequest {
 message HeightMapResponse {
     // Since there're no multi-dimensional arrays in protobuf, row by row are returned, i.e. there will be HeightMapRequest.height rows
     repeated int32 height_map = 1;
-    // Position that was used during last generation
-    float position = 2;
-}
-
-// Same as HeightMapResponse, yet for efficiency the results are returned as bytes.
-// Since no threshold above 255 is expected each pixel can be presented by a single by
-// rather than 4 bytes when using int32 list
-message HeightMapBytesResponse {
-    // Since there're no multi-dimensional arrays in protobuf, row by row are returned, i.e. there will be HeightMapRequest.height rows
-    bytes height_map = 1;
     // Position that was used during last generation
     float position = 2;
 }

@@ -29,10 +29,6 @@ class JuliaSetGeneratorServiceClient extends $grpc.Client {
       '/JuliaSetGeneratorService/GetSetAsHeightMapStream',
       ($0.HeightMapRequest value) => value.writeToBuffer(),
       ($core.List<$core.int> value) => $0.HeightMapResponse.fromBuffer(value));
-  static final _$getSetAsHeightMapAsBytesStream = $grpc.ClientMethod<$0.HeightMapRequest, $0.HeightMapBytesResponse>(
-      '/JuliaSetGeneratorService/GetSetAsHeightMapAsBytesStream',
-      ($0.HeightMapRequest value) => value.writeToBuffer(),
-      ($core.List<$core.int> value) => $0.HeightMapBytesResponse.fromBuffer(value));
 
   JuliaSetGeneratorServiceClient($grpc.ClientChannel channel,
       {$grpc.CallOptions? options,
@@ -46,10 +42,6 @@ class JuliaSetGeneratorServiceClient extends $grpc.Client {
 
   $grpc.ResponseStream<$0.HeightMapResponse> getSetAsHeightMapStream($0.HeightMapRequest request, {$grpc.CallOptions? options}) {
     return $createStreamingCall(_$getSetAsHeightMapStream, $async.Stream.fromIterable([request]), options: options);
-  }
-
-  $grpc.ResponseStream<$0.HeightMapBytesResponse> getSetAsHeightMapAsBytesStream($0.HeightMapRequest request, {$grpc.CallOptions? options}) {
-    return $createStreamingCall(_$getSetAsHeightMapAsBytesStream, $async.Stream.fromIterable([request]), options: options);
   }
 }
 
@@ -72,13 +64,6 @@ abstract class JuliaSetGeneratorServiceBase extends $grpc.Service {
         true,
         ($core.List<$core.int> value) => $0.HeightMapRequest.fromBuffer(value),
         ($0.HeightMapResponse value) => value.writeToBuffer()));
-    $addMethod($grpc.ServiceMethod<$0.HeightMapRequest, $0.HeightMapBytesResponse>(
-        'GetSetAsHeightMapAsBytesStream',
-        getSetAsHeightMapAsBytesStream_Pre,
-        false,
-        true,
-        ($core.List<$core.int> value) => $0.HeightMapRequest.fromBuffer(value),
-        ($0.HeightMapBytesResponse value) => value.writeToBuffer()));
   }
 
   $async.Future<$0.HeightMapResponse> getSetAsHeightMap_Pre($grpc.ServiceCall call, $async.Future<$0.HeightMapRequest> request) async {
@@ -89,11 +74,6 @@ abstract class JuliaSetGeneratorServiceBase extends $grpc.Service {
     yield* getSetAsHeightMapStream(call, await request);
   }
 
-  $async.Stream<$0.HeightMapBytesResponse> getSetAsHeightMapAsBytesStream_Pre($grpc.ServiceCall call, $async.Future<$0.HeightMapRequest> request) async* {
-    yield* getSetAsHeightMapAsBytesStream(call, await request);
-  }
-
   $async.Future<$0.HeightMapResponse> getSetAsHeightMap($grpc.ServiceCall call, $0.HeightMapRequest request);
   $async.Stream<$0.HeightMapResponse> getSetAsHeightMapStream($grpc.ServiceCall call, $0.HeightMapRequest request);
-  $async.Stream<$0.HeightMapBytesResponse> getSetAsHeightMapAsBytesStream($grpc.ServiceCall call, $0.HeightMapRequest request);
 }

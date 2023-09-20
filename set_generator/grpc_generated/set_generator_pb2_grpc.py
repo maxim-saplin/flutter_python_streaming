@@ -6,7 +6,11 @@ import set_generator_pb2 as set__generator__pb2
 
 
 class JuliaSetGeneratorServiceStub(object):
-    """Missing associated documentation comment in .proto file."""
+    """A service that generates Julia set in the complex plane around point (0, 0) and in range +2/-2
+    Escape algorithim is used whih tests for each individual point if it escapes or not.
+    The threshold parameter passed in request controls the maximum number of iterations before point is considered not escaped.
+    The results is represented as height map, i.e. the number of iterations for each point.
+    """
 
     def __init__(self, channel):
         """Constructor.
@@ -24,15 +28,14 @@ class JuliaSetGeneratorServiceStub(object):
                 request_serializer=set__generator__pb2.HeightMapRequest.SerializeToString,
                 response_deserializer=set__generator__pb2.HeightMapResponse.FromString,
                 )
-        self.GetSetAsHeightMapAsBytesStream = channel.unary_stream(
-                '/JuliaSetGeneratorService/GetSetAsHeightMapAsBytesStream',
-                request_serializer=set__generator__pb2.HeightMapRequest.SerializeToString,
-                response_deserializer=set__generator__pb2.HeightMapBytesResponse.FromString,
-                )
 
 
 class JuliaSetGeneratorServiceServicer(object):
-    """Missing associated documentation comment in .proto file."""
+    """A service that generates Julia set in the complex plane around point (0, 0) and in range +2/-2
+    Escape algorithim is used whih tests for each individual point if it escapes or not.
+    The threshold parameter passed in request controls the maximum number of iterations before point is considered not escaped.
+    The results is represented as height map, i.e. the number of iterations for each point.
+    """
 
     def GetSetAsHeightMap(self, request, context):
         """Accepts Width and Height parameters, returns a 'height map', i.e. for each pixel how many iterations happened
@@ -44,13 +47,6 @@ class JuliaSetGeneratorServiceServicer(object):
 
     def GetSetAsHeightMapStream(self, request, context):
         """Infinetly streams frames 
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def GetSetAsHeightMapAsBytesStream(self, request, context):
-        """Infinetly streams frames, use bytes rather than list of int32
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -69,11 +65,6 @@ def add_JuliaSetGeneratorServiceServicer_to_server(servicer, server):
                     request_deserializer=set__generator__pb2.HeightMapRequest.FromString,
                     response_serializer=set__generator__pb2.HeightMapResponse.SerializeToString,
             ),
-            'GetSetAsHeightMapAsBytesStream': grpc.unary_stream_rpc_method_handler(
-                    servicer.GetSetAsHeightMapAsBytesStream,
-                    request_deserializer=set__generator__pb2.HeightMapRequest.FromString,
-                    response_serializer=set__generator__pb2.HeightMapBytesResponse.SerializeToString,
-            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
             'JuliaSetGeneratorService', rpc_method_handlers)
@@ -82,7 +73,11 @@ def add_JuliaSetGeneratorServiceServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class JuliaSetGeneratorService(object):
-    """Missing associated documentation comment in .proto file."""
+    """A service that generates Julia set in the complex plane around point (0, 0) and in range +2/-2
+    Escape algorithim is used whih tests for each individual point if it escapes or not.
+    The threshold parameter passed in request controls the maximum number of iterations before point is considered not escaped.
+    The results is represented as height map, i.e. the number of iterations for each point.
+    """
 
     @staticmethod
     def GetSetAsHeightMap(request,
@@ -115,22 +110,5 @@ class JuliaSetGeneratorService(object):
         return grpc.experimental.unary_stream(request, target, '/JuliaSetGeneratorService/GetSetAsHeightMapStream',
             set__generator__pb2.HeightMapRequest.SerializeToString,
             set__generator__pb2.HeightMapResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
-
-    @staticmethod
-    def GetSetAsHeightMapAsBytesStream(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_stream(request, target, '/JuliaSetGeneratorService/GetSetAsHeightMapAsBytesStream',
-            set__generator__pb2.HeightMapRequest.SerializeToString,
-            set__generator__pb2.HeightMapBytesResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

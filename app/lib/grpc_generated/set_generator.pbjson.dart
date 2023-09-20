@@ -44,17 +44,3 @@ final $typed_data.Uint8List heightMapResponseDescriptor = $convert.base64Decode(
     'ChFIZWlnaHRNYXBSZXNwb25zZRIdCgpoZWlnaHRfbWFwGAEgAygFUgloZWlnaHRNYXASGgoIcG'
     '9zaXRpb24YAiABKAJSCHBvc2l0aW9u');
 
-@$core.Deprecated('Use heightMapBytesResponseDescriptor instead')
-const HeightMapBytesResponse$json = {
-  '1': 'HeightMapBytesResponse',
-  '2': [
-    {'1': 'height_map', '3': 1, '4': 1, '5': 12, '10': 'heightMap'},
-    {'1': 'position', '3': 2, '4': 1, '5': 2, '10': 'position'},
-  ],
-};
-
-/// Descriptor for `HeightMapBytesResponse`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List heightMapBytesResponseDescriptor = $convert.base64Decode(
-    'ChZIZWlnaHRNYXBCeXRlc1Jlc3BvbnNlEh0KCmhlaWdodF9tYXAYASABKAxSCWhlaWdodE1hcB'
-    'IaCghwb3NpdGlvbhgCIAEoAlIIcG9zaXRpb24=');
-
