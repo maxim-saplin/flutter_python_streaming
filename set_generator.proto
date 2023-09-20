@@ -1,6 +1,5 @@
 syntax = "proto3";
 
-
 // A service that generates Julia set in the complex plane around point (0, 0) and in range +2/-2
 // Escape algorithim is used whih tests for each individual point if it escapes or not.
 // The threshold parameter passed in request controls the maximum number of iterations before point is considered not escaped.
