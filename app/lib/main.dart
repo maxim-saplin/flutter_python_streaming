@@ -26,7 +26,7 @@ late IsolatePool pool;
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   pyInitResult = initPy();
-  pool = IsolatePool(16);
+  pool = IsolatePool(12);
   pool.start();
 
   runApp(const MainApp());
@@ -52,6 +52,9 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
 
   double pixelRatio = 0;
   double position = 0.0;
+
+  /// If > 0 determines the position when the animation must be stoped
+  double stopAt = 0.0;
   String error = '';
   double lastWidth = 0;
   double lastHeight = 0;
@@ -74,6 +77,10 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    if (stopAt > 0 && position >= stopAt) {
+      _stop();
+    }
+
     return MaterialApp(
         theme: ThemeData.light(useMaterial3: true),
         home: Scaffold(
@@ -120,15 +127,23 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
                                   onPlayLongTap: () {
                                     // reset posotion and start over
                                     position = 0;
+                                    stopAt = 0.0;
                                     _onPlay(constraints);
                                   },
-                                  onPause: () {
-                                    cancelationToken.call();
-                                    _setScreenState(ScreenStates.ready);
+                                  onPlayDoubleTap: () {
+                                    position = 0;
+                                    stopAt = 3.0;
+                                    _onPlay(constraints);
                                   },
+                                  onPause: () => _stop(),
                                 ))
                           ]),
                     ))));
+  }
+
+  void _stop() {
+    cancelationToken.call();
+    _setScreenState(ScreenStates.ready);
   }
 
   void _setScreenState(ScreenStates state) {
@@ -189,6 +204,7 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
         pool: pool);
 
     cancelationToken = cn;
+    _setScreenState(ScreenStates.animating);
 
     juliaStream.listen(
         (value) {
@@ -200,7 +216,7 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
           frameCount++;
           previousFrameReceivedMicro = lastFrameReceivedMicro;
           lastFrameReceivedMicro = sw.elapsedMicroseconds;
-          _setScreenState(ScreenStates.animating);
+          setState(() {}); // Update screen
         },
         cancelOnError: true,
         onError: (error, stackTrace) {
@@ -265,6 +281,7 @@ class _BottomPanel extends StatelessWidget {
       required this.onOneFrame,
       required this.onPlay,
       required this.onPlayLongTap,
+      required this.onPlayDoubleTap,
       required this.onPause});
 
   final ScreenStates screenState;
@@ -272,6 +289,7 @@ class _BottomPanel extends StatelessWidget {
   final Function onOneFrame;
   final Function onPlay;
   final Function onPlayLongTap;
+  final Function onPlayDoubleTap;
   final Function onPause;
 
   @override
@@ -350,6 +368,7 @@ class _BottomPanel extends StatelessWidget {
                         ? const Icon(Icons.pause_rounded)
                         : GestureDetector(
                             onLongPress: () => onPlayLongTap(),
+                            onDoubleTap: () => onPlayDoubleTap(),
                             child: const Icon(Icons.play_arrow_rounded)))
               ]),
         ));
