@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:grpc/grpc.dart';
-import 'package:isolate_pool_2/isolate_pool_2.dart';
 import 'package:popover/popover.dart';
 
 import 'grpc_generated/client.dart';
@@ -21,13 +20,9 @@ Stopwatch sw = Stopwatch()..start();
 int frameCount = 0;
 service.FetchModes fetchMode = service.FetchModes.grpcRepeatedInt32;
 
-late IsolatePool pool;
-
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   pyInitResult = initPy();
-  pool = IsolatePool(12);
-  pool.start();
 
   runApp(const MainApp());
 }
@@ -200,8 +195,7 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
         heightPixels: pHeight,
         iterationThreshold: threshold,
         startPosition: position,
-        fetchMode: fetchMode,
-        pool: pool);
+        fetchMode: fetchMode);
 
     cancelationToken = cn;
     _setScreenState(ScreenStates.animating);

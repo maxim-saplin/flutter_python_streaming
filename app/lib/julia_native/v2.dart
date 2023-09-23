@@ -1,19 +1,25 @@
+// v2, v1 parallelized via IsolatePool
+
 import 'dart:math';
-
 import 'package:isolate_pool_2/isolate_pool_2.dart';
-
-import 'grpc_generated/set_generator.pb.dart';
+import '../grpc_generated/set_generator.pb.dart';
 
 double _position = 0;
 bool _canceled = false;
 
 void cancelSetGeneration() {
   _canceled = true;
+  try {
+    _pool.stop();
+  } catch (_) {}
 }
 
+late IsolatePool _pool;
+
 Stream<HeightMapBytesResponse> getSetAsHeightMapAsBytesStream(
-    int widthPoints, int heightPoints, int threshold, double position,
-    [IsolatePool? pool]) async* {
+    int widthPoints, int heightPoints, int threshold, double position) async* {
+  _pool = IsolatePool(12);
+  await _pool.start();
   _position = position;
   _canceled = false;
   while (!_canceled) {
@@ -25,7 +31,7 @@ Stream<HeightMapBytesResponse> getSetAsHeightMapAsBytesStream(
     } else {
       _position += 0.01;
     }
-    if (pool == null || pool.numberOfIsolates > heightPoints) {
+    if (_pool.numberOfIsolates > heightPoints) {
       var result = HeightMapBytesResponse(
           heightMap: _getSetAsHeightMap(
               widthPoints, heightPoints, threshold, _position),
@@ -33,7 +39,7 @@ Stream<HeightMapBytesResponse> getSetAsHeightMapAsBytesStream(
       yield result;
     } else {
       List<int> list = await _getSetAsHeightMapParallel(
-          widthPoints, heightPoints, pool, threshold);
+          widthPoints, heightPoints, _pool, threshold);
       yield HeightMapBytesResponse(heightMap: list, position: _position);
     }
 
@@ -52,7 +58,6 @@ Stream<HeightMapBytesResponse> getSetAsHeightMapAsBytesStream(
 Future<List<int>> _getSetAsHeightMapParallel(
     int widthPoints, int heightPoints, IsolatePool pool, int threshold) async {
   var list = List.filled(widthPoints * heightPoints, 0);
-  late Future complete;
 
   double width = 4, height = 4 * heightPoints / widthPoints;
   double xStart = -width / 2, yStart = -height / 2;
@@ -60,8 +65,10 @@ Future<List<int>> _getSetAsHeightMapParallel(
 
   int blockSize = (heightPoints / pool.numberOfIsolates).ceil();
 
+  List<Future> futures = [];
+
   for (var i = 0; i < heightPoints; i += blockSize) {
-    complete = pool
+    futures.add(pool
         .scheduleJob<List<int>>(GetBlockJob(
             widthPoints: widthPoints,
             heightPoints: heightPoints,
@@ -74,10 +81,10 @@ Future<List<int>> _getSetAsHeightMapParallel(
             position: _position))
         .then((v) {
       list.setAll(i * widthPoints, v);
-    });
+    }));
   }
 
-  await complete;
+  await Future.wait(futures);
   return list;
 }
 
