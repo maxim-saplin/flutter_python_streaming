@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:grpc/grpc.dart';
+import 'package:isolate_pool_2/isolate_pool_2.dart';
 import 'package:popover/popover.dart';
 
 import 'grpc_generated/client.dart';
@@ -20,9 +21,13 @@ Stopwatch sw = Stopwatch()..start();
 int frameCount = 0;
 service.FetchModes fetchMode = service.FetchModes.grpcRepeatedInt32;
 
+late IsolatePool pool;
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   pyInitResult = initPy();
+  pool = IsolatePool(16);
+  pool.start();
 
   runApp(const MainApp());
 }
@@ -180,7 +185,8 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
         heightPixels: pHeight,
         iterationThreshold: threshold,
         startPosition: position,
-        fetchMode: fetchMode);
+        fetchMode: fetchMode,
+        pool: pool);
 
     cancelationToken = cn;
 
@@ -286,48 +292,44 @@ class _BottomPanel extends StatelessWidget {
                         height: 20,
                         width: 20,
                         child: CircularProgressIndicator(strokeWidth: 6))
-                    : (error.isNotEmpty
-                        ? Tooltip(
-                            message: 'Error: $error',
-                            child: const Icon(
+                    : Tooltip(
+                        richMessage: error.isNotEmpty
+                            ? TextSpan(text: ' Error: $error')
+                            : _getStatusText(),
+                        child: MouseRegion(
+                          cursor: MaterialStateMouseCursor.clickable,
+                          child: GestureDetector(
+                            child: Icon(
                               Icons.circle,
-                              color: Colors.red,
-                            ))
-                        : Tooltip(
-                            richMessage: _getStatusText(),
-                            child: MouseRegion(
-                              cursor: MaterialStateMouseCursor.clickable,
-                              child: GestureDetector(
-                                child: const Icon(
-                                  Icons.circle,
-                                  color: Colors.green,
-                                ),
-                                onTap: () {
-                                  showPopover(
-                                    context: context,
-                                    radius: 0,
-                                    backgroundColor: Colors.transparent,
-                                    barrierColor: Colors.white.withAlpha(150),
-                                    shadow: [
-                                      const BoxShadow(
-                                          color: Colors.transparent,
-                                          offset: Offset(0, 0),
-                                          blurRadius: 0)
-                                    ],
-                                    //contentDyOffset: -60,
-                                    transition: PopoverTransition.other,
-                                    transitionDuration:
-                                        const Duration(milliseconds: 100),
-                                    bodyBuilder: (context) => _PanelPopup(
-                                        statusText: _getStatusText()),
-                                    direction: PopoverDirection.bottom,
-                                    width: 380,
-                                    height: 225,
-                                  );
-                                },
-                              ),
+                              color:
+                                  error.isNotEmpty ? Colors.red : Colors.green,
                             ),
-                          )),
+                            onTap: () {
+                              showPopover(
+                                context: context,
+                                radius: 0,
+                                backgroundColor: Colors.transparent,
+                                barrierColor: Colors.white.withAlpha(150),
+                                shadow: [
+                                  const BoxShadow(
+                                      color: Colors.transparent,
+                                      offset: Offset(0, 0),
+                                      blurRadius: 0)
+                                ],
+                                //contentDyOffset: -60,
+                                transition: PopoverTransition.other,
+                                transitionDuration:
+                                    const Duration(milliseconds: 100),
+                                bodyBuilder: (context) =>
+                                    _PanelPopup(statusText: _getStatusText()),
+                                direction: PopoverDirection.bottom,
+                                width: 380,
+                                height: 260,
+                              );
+                            },
+                          ),
+                        ),
+                      ),
                 FloatingActionButton(
                     backgroundColor: Colors.white,
                     foregroundColor: screenState == ScreenStates.ready
@@ -445,6 +447,24 @@ class _PanelPopupState extends State<_PanelPopup> {
                           },
                         ),
                       ),
+                      SizedBox(
+                        height: 36,
+                        child: RadioListTile<service.FetchModes>(
+                          dense: true,
+                          title: const Text(
+                            'Use Dart Isolates implementation',
+                            textScaleFactor: 1.1,
+                          ),
+                          contentPadding: EdgeInsets.zero,
+                          value: service.FetchModes.dartIsolates,
+                          groupValue: fetchMode,
+                          onChanged: (value) {
+                            setState(() {
+                              fetchMode = value as service.FetchModes;
+                            });
+                          },
+                        ),
+                      ),
                     ],
                   )
                 ]))));
@@ -507,10 +527,6 @@ class _FractalsState extends State<_Fractals> {
         var diff = 0xFF - iter;
         diff = diff | diff << 8 | diff << 16;
         pixelData[pos] = 0xFF000000 | diff | 0xFF;
-        // pixelData[pos] = 0xFF000000 +
-        //     255 * (1 + cos(3.32 * log(iter))) ~/ 2 +
-        //     (255 * 256 * (1 + cos(0.774 * log(iter))) ~/ 2) +
-        //     (255 * 256 * 256 * (1 + cos(0.412 * log(iter))) ~/ 2);
       }
     }
 

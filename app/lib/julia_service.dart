@@ -1,10 +1,11 @@
 import 'package:grpc/grpc.dart';
+import 'package:isolate_pool_2/isolate_pool_2.dart';
 
 import 'grpc_generated/client.dart';
 import 'grpc_generated/set_generator.pbgrpc.dart';
 import 'julia.dart';
 
-enum FetchModes { grpcRepeatedInt32, grpcBytes, dartUiThread }
+enum FetchModes { grpcRepeatedInt32, grpcBytes, dartUiThread, dartIsolates }
 
 typedef CancelationToken = Function();
 
@@ -30,7 +31,8 @@ Future<HeightMapResponse> getSetAsHeightMap(
     required int heightPixels,
     required int iterationThreshold,
     required double startPosition,
-    required FetchModes fetchMode}) {
+    required FetchModes fetchMode,
+    required IsolatePool pool}) {
   Stream stream;
   CancelationToken cancelationToken;
 
@@ -55,7 +57,12 @@ Future<HeightMapResponse> getSetAsHeightMap(
       break;
     case FetchModes.dartUiThread:
       stream = getSetAsHeightMapAsBytesStream(
-          widthPixels, heightPixels, iterationThreshold, startPosition);
+          widthPixels, heightPixels, iterationThreshold, startPosition, null);
+      cancelationToken = () => cancelSetGeneration();
+      break;
+    case FetchModes.dartIsolates:
+      stream = getSetAsHeightMapAsBytesStream(
+          widthPixels, heightPixels, iterationThreshold, startPosition, pool);
       cancelationToken = () => cancelSetGeneration();
       break;
   }
