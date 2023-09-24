@@ -1,6 +1,6 @@
-// v2, v1 parallelized via IsolatePool
-
+// v5, v3 with improved v4 calcullations
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:isolate_pool_2/isolate_pool_2.dart';
 import '../grpc_generated/set_generator.pb.dart';
 import 'common.dart';
@@ -51,7 +51,7 @@ Stream<HeightMapBytesResponse> getSetAsHeightMapAsBytesStream(
 
 Future<List<int>> _getSetAsHeightMapParallel(
     int widthPoints, int heightPoints, IsolatePool pool, int threshold) async {
-  var list = List.filled(widthPoints * heightPoints, 0);
+  var list = Uint8List(widthPoints * heightPoints);
 
   double width = 4, height = 4 * heightPoints / widthPoints;
   double xStart = -width / 2, yStart = -height / 2;
@@ -127,12 +127,14 @@ class GetBlockJob extends PooledJob<List<int>> {
 
 int _checkInJuliaSet(
     double zx, double zy, double constX, double constY, int threshold) {
-  _Complex z = _Complex(zx, zy);
-  _Complex c = _Complex(constX, constY);
+  var zx0 = zx;
+  var zy0 = zy;
 
   for (int i = 0; i < threshold; i++) {
-    z = z * z + c;
-    if (z.abs() > 4.0) {
+    final zx0zy0 = zx0 * zy0;
+    zx0 = zx0 * zx0 - zy0 * zy0 + constX;
+    zy0 = zx0zy0 + zx0zy0 + constY;
+    if ((zx0 * zx0 + zy0 * zy0) > 16) {
       return i;
     }
   }
@@ -144,89 +146,3 @@ List<double> _linspace(double start, double end, int num) {
   double step = (end - start) / (num - 1);
   return List<double>.generate(num, (i) => start + (step * i));
 }
-
-class _Complex {
-  double real;
-  double imag;
-
-  _Complex(this.real, this.imag);
-
-  _Complex operator +(_Complex other) =>
-      _Complex(real + other.real, imag + other.imag);
-  _Complex operator *(_Complex other) => _Complex(
-      real * other.real - imag * other.imag,
-      real * other.imag + imag * other.real);
-
-  double abs() => sqrt(real * real + imag * imag);
-}
-
-
-
-// Future<List<int>> _getSetAsHeightMapParallel(int widthPoints, int heightPoints, IsolatePool pool, int threshold) async {
-//   var list = List.filled(widthPoints * heightPoints, 0);
-//   late Future complete;
-  
-//   double width = 4, height = 4 * heightPoints / widthPoints;
-//   double xStart = -width / 2, yStart = -height / 2;
-//   List<double> im = _linspace(yStart, yStart + height, heightPoints);
-  
-//   for (var i = 0; i < heightPoints; i++) {
-//     complete = pool
-//         .scheduleJob<List<int>>(GetLineJob(
-//             widthPoints: widthPoints,
-//             heightPoints: heightPoints,
-//             width: width,
-//             height: height,
-//             xStart: xStart,
-//             yStart: yStart,
-//             im: im[i],
-//             threshold: threshold,
-//             position: _position))
-//         .then((v) {
-//       list.setAll(i * widthPoints, v);
-//     });
-//   }
-  
-//   await complete;
-//   return list;
-// }
-
-// class GetLineJob extends PooledJob<List<int>> {
-//   GetLineJob(
-//       {required this.widthPoints,
-//       required this.heightPoints,
-//       required this.width,
-//       required this.height,
-//       required this.xStart,
-//       required this.yStart,
-//       required this.im,
-//       required this.threshold,
-//       required this.position});
-
-//   final int widthPoints;
-//   final int heightPoints;
-//   final double width;
-//   final double height;
-//   final double xStart;
-//   final double yStart;
-//   final double im;
-//   final int threshold;
-//   final double position;
-
-//   @override
-//   Future<List<int>> job() async {
-//     List<int> result = List<int>.filled(widthPoints, 0);
-
-//     List<double> re = _linspace(xStart, xStart + width, widthPoints);
-
-//     double r = 0.7;
-//     double a = 2 * pi * position;
-//     double cx = r * cos(a), cy = r * sin(a);
-
-//     for (int j = 0; j < widthPoints; j++) {
-//       result[j] = _checkInJuliaSet(re[j], im, cx, cy, threshold);
-//     }
-
-//     return result;
-//   }
-// }

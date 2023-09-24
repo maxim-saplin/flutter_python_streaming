@@ -1,1 +1,1 @@
-const int numberOfIsolates = 10;
+const int numberOfIsolates = 8;

@@ -5,13 +5,19 @@ import 'grpc_generated/set_generator.pbgrpc.dart';
 import 'julia_native/v1.dart' as v1;
 import 'julia_native/v2.dart' as v2;
 import 'julia_native/v3.dart' as v3;
+import 'julia_native/v4.dart' as v4;
+import 'julia_native/v5.dart' as v5;
+import 'julia_native/v6.dart' as v6;
 
 enum FetchModes {
   grpcRepeatedInt32,
   grpcBytes,
   dartUiThreadV1,
   dartIsolatesV2,
-  dartIsolatesV3
+  dartIsolatesV3,
+  dartUiThreadV4,
+  dartIsolatesV5,
+  dartIsolatesV6,
 }
 
 typedef CancelationToken = Function();
@@ -75,6 +81,21 @@ Future<HeightMapResponse> getSetAsHeightMap(
       stream = v3.getSetAsHeightMapAsBytesStream(
           widthPixels, heightPixels, iterationThreshold, startPosition);
       cancelationToken = () => v3.cancelSetGeneration();
+      break;
+    case FetchModes.dartUiThreadV4:
+      stream = v4.getSetAsHeightMapAsBytesStream(
+          widthPixels, heightPixels, iterationThreshold, startPosition);
+      cancelationToken = () => v4.cancelSetGeneration();
+      break;
+    case FetchModes.dartIsolatesV5:
+      stream = v5.getSetAsHeightMapAsBytesStream(
+          widthPixels, heightPixels, iterationThreshold, startPosition);
+      cancelationToken = () => v5.cancelSetGeneration();
+      break;
+    case FetchModes.dartIsolatesV6:
+      stream = v6.getSetAsHeightMapAsBytesStream(
+          widthPixels, heightPixels, iterationThreshold, startPosition);
+      cancelationToken = () => v6.cancelSetGeneration();
       break;
   }
 

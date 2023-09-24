@@ -1,4 +1,4 @@
-// v3, v2 with Uint8List
+// v3, v2 with Uint8List instead of List<int>
 
 import 'dart:math';
 import 'dart:typed_data';
@@ -33,17 +33,10 @@ Stream<HeightMapBytesResponse> getSetAsHeightMapAsBytesStream(
     } else {
       _position += 0.01;
     }
-    if (_pool.numberOfIsolates > heightPoints) {
-      var result = HeightMapBytesResponse(
-          heightMap: _getSetAsHeightMap(
-              widthPoints, heightPoints, threshold, _position),
-          position: _position);
-      yield result;
-    } else {
-      List<int> list = await _getSetAsHeightMapParallel(
-          widthPoints, heightPoints, _pool, threshold);
-      yield HeightMapBytesResponse(heightMap: list, position: _position);
-    }
+
+    List<int> list = await _getSetAsHeightMapParallel(
+        widthPoints, heightPoints, _pool, threshold);
+    yield HeightMapBytesResponse(heightMap: list, position: _position);
 
     // Hack to release the UI thread, 1ms seem insignificant delay.
     // E.g. if you have 60fps, adding 1 ms will make it 56 fps)
@@ -59,7 +52,7 @@ Stream<HeightMapBytesResponse> getSetAsHeightMapAsBytesStream(
 
 Future<List<int>> _getSetAsHeightMapParallel(
     int widthPoints, int heightPoints, IsolatePool pool, int threshold) async {
-  var list = List.filled(widthPoints * heightPoints, 0);
+  var list = Uint8List(widthPoints * heightPoints);
 
   double width = 4, height = 4 * heightPoints / widthPoints;
   double xStart = -width / 2, yStart = -height / 2;
@@ -131,29 +124,6 @@ class GetBlockJob extends PooledJob<List<int>> {
 
     return result;
   }
-}
-
-Uint8List _getSetAsHeightMap(
-    int widthPoints, int heightPoints, int threshold, double position) {
-  Uint8List result = Uint8List(widthPoints * heightPoints);
-  double width = 4, height = 4 * heightPoints / widthPoints;
-  double xStart = -width / 2, yStart = -height / 2;
-
-  List<double> re = _linspace(xStart, xStart + width, widthPoints);
-  List<double> im = _linspace(yStart, yStart + height, heightPoints);
-
-  double r = 0.7;
-  double a = 2 * pi * position;
-  double cx = r * cos(a), cy = r * sin(a);
-
-  for (int i = 0; i < heightPoints; i++) {
-    for (int j = 0; j < widthPoints; j++) {
-      result[i * widthPoints + j] =
-          _checkInJuliaSet(re[j], im[i], cx, cy, threshold);
-    }
-  }
-
-  return result;
 }
 
 int _checkInJuliaSet(

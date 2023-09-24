@@ -490,6 +490,36 @@ class _PanelPopupState extends State<_PanelPopup> {
                                 });
                               },
                             ),
+                            _CustomRadioTile(
+                              title: 'Use Dart native implementation V4',
+                              value: service.FetchModes.dartUiThreadV4,
+                              groupValue: fetchMode,
+                              onChanged: (value) {
+                                setState(() {
+                                  fetchMode = value as service.FetchModes;
+                                });
+                              },
+                            ),
+                            _CustomRadioTile(
+                              title: 'Use Dart Isolates implementation V5',
+                              value: service.FetchModes.dartIsolatesV5,
+                              groupValue: fetchMode,
+                              onChanged: (value) {
+                                setState(() {
+                                  fetchMode = value as service.FetchModes;
+                                });
+                              },
+                            ),
+                            _CustomRadioTile(
+                              title: 'Use Dart Isolates implementation V6',
+                              value: service.FetchModes.dartIsolatesV6,
+                              groupValue: fetchMode,
+                              onChanged: (value) {
+                                setState(() {
+                                  fetchMode = value as service.FetchModes;
+                                });
+                              },
+                            ),
                           ],
                         )
                       ]),
