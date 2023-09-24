@@ -343,20 +343,12 @@ class _BottomPanel extends StatelessWidget {
                                 transition: PopoverTransition.other,
                                 transitionDuration:
                                     const Duration(milliseconds: 100),
-                                bodyBuilder: (context) => error.isNotEmpty
-                                    ? Column(
-                                        children: [
-                                          Text('Error: $error'),
-                                          ElevatedButton(
-                                            onPressed: () {
-                                              onPythonReload();
-                                              Navigator.of(context).pop();
-                                            },
-                                            child: const Text('Reload'),
-                                          ),
-                                        ],
-                                      )
-                                    : _PanelPopup(statusText: _getStatusText()),
+                                bodyBuilder: (context) => _PanelPopup(
+                                    statusText: _getStatusText(),
+                                    error: error,
+                                    onPythonReload: error.isNotEmpty
+                                        ? onPythonReload
+                                        : null),
                                 direction: PopoverDirection.bottom,
                                 width: 380,
                                 height: 225,
@@ -413,9 +405,12 @@ class _BottomPanel extends StatelessWidget {
 }
 
 class _PanelPopup extends StatefulWidget {
-  const _PanelPopup({required this.statusText});
+  const _PanelPopup(
+      {required this.statusText, required this.error, this.onPythonReload});
 
   final TextSpan statusText;
+  final String error;
+  final Function? onPythonReload;
 
   @override
   State<_PanelPopup> createState() => _PanelPopupState();
@@ -431,99 +426,117 @@ class _PanelPopupState extends State<_PanelPopup> {
             borderRadius: const BorderRadius.all(Radius.circular(10)),
             child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Theme(
-                    data: ThemeData(
-                        scrollbarTheme: const ScrollbarThemeData(
-                            thumbVisibility: MaterialStatePropertyAll(true))),
-                    child: SingleChildScrollView(
-                      child: Column(children: [
-                        Text.rich(widget.statusText),
-                        Column(
-                          children: [
-                            _CustomRadioTile(
-                              title: 'Use "repeated int32" stream',
-                              value: service.FetchModes.grpcRepeatedInt32,
-                              groupValue: fetchMode,
-                              onChanged: (value) {
-                                setState(() {
-                                  fetchMode = value as service.FetchModes;
-                                });
-                              },
-                            ),
-                            _CustomRadioTile(
-                              title: 'Use "bytes" stream',
-                              value: service.FetchModes.grpcBytes,
-                              groupValue: fetchMode,
-                              onChanged: (value) {
-                                setState(() {
-                                  fetchMode = value as service.FetchModes;
-                                });
-                              },
-                            ),
-                            _CustomRadioTile(
-                              title: 'Use Dart native implementation V1',
-                              value: service.FetchModes.dartUiThreadV1,
-                              groupValue: fetchMode,
-                              onChanged: (value) {
-                                setState(() {
-                                  fetchMode = value as service.FetchModes;
-                                });
-                              },
-                            ),
-                            _CustomRadioTile(
-                              title: 'Use Dart Isolates implementation V2',
-                              value: service.FetchModes.dartIsolatesV2,
-                              groupValue: fetchMode,
-                              onChanged: (value) {
-                                setState(() {
-                                  fetchMode = value as service.FetchModes;
-                                });
-                              },
-                            ),
-                            _CustomRadioTile(
-                              title: 'Use Dart Isolates implementation V3',
-                              value: service.FetchModes.dartIsolatesV3,
-                              groupValue: fetchMode,
-                              onChanged: (value) {
-                                setState(() {
-                                  fetchMode = value as service.FetchModes;
-                                });
-                              },
-                            ),
-                            _CustomRadioTile(
-                              title: 'Use Dart native implementation V4',
-                              value: service.FetchModes.dartUiThreadV4,
-                              groupValue: fetchMode,
-                              onChanged: (value) {
-                                setState(() {
-                                  fetchMode = value as service.FetchModes;
-                                });
-                              },
-                            ),
-                            _CustomRadioTile(
-                              title: 'Use Dart Isolates implementation V5',
-                              value: service.FetchModes.dartIsolatesV5,
-                              groupValue: fetchMode,
-                              onChanged: (value) {
-                                setState(() {
-                                  fetchMode = value as service.FetchModes;
-                                });
-                              },
-                            ),
-                            _CustomRadioTile(
-                              title: 'Use Dart Isolates implementation V6',
-                              value: service.FetchModes.dartIsolatesV6,
-                              groupValue: fetchMode,
-                              onChanged: (value) {
-                                setState(() {
-                                  fetchMode = value as service.FetchModes;
-                                });
-                              },
-                            ),
-                          ],
-                        )
-                      ]),
-                    )))));
+                child: widget.error.isNotEmpty
+                    ? Center(
+                        child: SizedBox(
+                            height: 58,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('Error: ${widget.error}'),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    widget.onPythonReload?.call();
+                                    Navigator.of(context).pop();
+                                  },
+                                  child: const Text('Reload'),
+                                ),
+                              ],
+                            )))
+                    : Theme(
+                        data: ThemeData(
+                            scrollbarTheme: const ScrollbarThemeData(
+                                thumbVisibility:
+                                    MaterialStatePropertyAll(true))),
+                        child: SingleChildScrollView(
+                          child: Column(children: [
+                            Text.rich(widget.statusText),
+                            Column(
+                              children: [
+                                _CustomRadioTile(
+                                  title: 'Use "repeated int32" stream',
+                                  value: service.FetchModes.grpcRepeatedInt32,
+                                  groupValue: fetchMode,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      fetchMode = value as service.FetchModes;
+                                    });
+                                  },
+                                ),
+                                _CustomRadioTile(
+                                  title: 'Use "bytes" stream',
+                                  value: service.FetchModes.grpcBytes,
+                                  groupValue: fetchMode,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      fetchMode = value as service.FetchModes;
+                                    });
+                                  },
+                                ),
+                                _CustomRadioTile(
+                                  title: 'Use Dart native implementation V1',
+                                  value: service.FetchModes.dartUiThreadV1,
+                                  groupValue: fetchMode,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      fetchMode = value as service.FetchModes;
+                                    });
+                                  },
+                                ),
+                                _CustomRadioTile(
+                                  title: 'Use Dart Isolates implementation V2',
+                                  value: service.FetchModes.dartIsolatesV2,
+                                  groupValue: fetchMode,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      fetchMode = value as service.FetchModes;
+                                    });
+                                  },
+                                ),
+                                _CustomRadioTile(
+                                  title: 'Use Dart Isolates implementation V3',
+                                  value: service.FetchModes.dartIsolatesV3,
+                                  groupValue: fetchMode,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      fetchMode = value as service.FetchModes;
+                                    });
+                                  },
+                                ),
+                                _CustomRadioTile(
+                                  title: 'Use Dart native implementation V4',
+                                  value: service.FetchModes.dartUiThreadV4,
+                                  groupValue: fetchMode,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      fetchMode = value as service.FetchModes;
+                                    });
+                                  },
+                                ),
+                                _CustomRadioTile(
+                                  title: 'Use Dart Isolates implementation V5',
+                                  value: service.FetchModes.dartIsolatesV5,
+                                  groupValue: fetchMode,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      fetchMode = value as service.FetchModes;
+                                    });
+                                  },
+                                ),
+                                _CustomRadioTile(
+                                  title: 'Use Dart Isolates implementation V6',
+                                  value: service.FetchModes.dartIsolatesV6,
+                                  groupValue: fetchMode,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      fetchMode = value as service.FetchModes;
+                                    });
+                                  },
+                                ),
+                              ],
+                            )
+                          ]),
+                        )))));
   }
 }
 

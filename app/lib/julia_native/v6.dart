@@ -1,4 +1,6 @@
-// v5, v5 with interleaving rows blocks, 2xNumberOfIsolates blocks
+// v6, v5 with interleaving rows blocks, 4xNumberOfIsolates blocks
+// some rows require multiple iterations before escape condition is met, those isolates
+// having this slow rows might hold back the entire frame, redestributing load
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:isolate_pool_2/isolate_pool_2.dart';
