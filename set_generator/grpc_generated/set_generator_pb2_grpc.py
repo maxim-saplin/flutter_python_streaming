@@ -6,7 +6,11 @@ import set_generator_pb2 as set__generator__pb2
 
 
 class JuliaSetGeneratorServiceStub(object):
-    """Missing associated documentation comment in .proto file."""
+    """A service that generates Julia set in the complex plane around point (0, 0) and in range +2/-2
+    Escape algorithim is used whih tests for each individual point if it escapes or not.
+    The threshold parameter passed in request controls the maximum number of iterations before point is considered not escaped.
+    The results is represented as height map, i.e. the number of iterations for each point.
+    """
 
     def __init__(self, channel):
         """Constructor.
@@ -32,7 +36,11 @@ class JuliaSetGeneratorServiceStub(object):
 
 
 class JuliaSetGeneratorServiceServicer(object):
-    """Missing associated documentation comment in .proto file."""
+    """A service that generates Julia set in the complex plane around point (0, 0) and in range +2/-2
+    Escape algorithim is used whih tests for each individual point if it escapes or not.
+    The threshold parameter passed in request controls the maximum number of iterations before point is considered not escaped.
+    The results is represented as height map, i.e. the number of iterations for each point.
+    """
 
     def GetSetAsHeightMap(self, request, context):
         """Accepts Width and Height parameters, returns a 'height map', i.e. for each pixel how many iterations happened
@@ -82,7 +90,11 @@ def add_JuliaSetGeneratorServiceServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class JuliaSetGeneratorService(object):
-    """Missing associated documentation comment in .proto file."""
+    """A service that generates Julia set in the complex plane around point (0, 0) and in range +2/-2
+    Escape algorithim is used whih tests for each individual point if it escapes or not.
+    The threshold parameter passed in request controls the maximum number of iterations before point is considered not escaped.
+    The results is represented as height map, i.e. the number of iterations for each point.
+    """
 
     @staticmethod
     def GetSetAsHeightMap(request,

@@ -44,7 +44,7 @@ class JuliaSetGeneratorService(set_generator_pb2_grpc.JuliaSetGeneratorService):
             result = set_generator_pb2.HeightMapBytesResponse(height_map=height_map.tobytes(), position=position)
             yield result
         
-@njit(nopython=True, nogil=True, parallel=True)
+@njit(nogil=True, parallel=True)
 def _GetSetAsHeightMap(widthPoints: int, heightPoints: int, threshold: int, position: float):
     result = np.empty(widthPoints * heightPoints, dtype=np.uint8)
     width, height = 4, 4*heightPoints/widthPoints  # fix aspect ratio
@@ -65,7 +65,7 @@ def _GetSetAsHeightMap(widthPoints: int, heightPoints: int, threshold: int, posi
         
     return result
 
-@njit(nopython=True, nogil=True)
+@njit(nogil=True)
 def _check_in_julia_set(zx: int, zy: int, const_x: int, const_y: int, threshold: int):
     """Calculates whether the number z[0] = zx + i*zy with a constant c = x + i*y
     belongs to the Julia set. In order to belong, the sequence 

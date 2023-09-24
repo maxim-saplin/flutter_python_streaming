@@ -64,10 +64,7 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
     pixelRatio = WidgetsBinding
         .instance.platformDispatcher.displays.first.devicePixelRatio;
 
-    pyInitResult.then((v) => _setScreenState(ScreenStates.ready),
-        onError: (error, stackTrace) {
-      setState(() => this.error = error.toString());
-    });
+    _onPyLoaded();
   }
 
   @override
@@ -115,25 +112,38 @@ class MainAppState extends State<MainApp> with WidgetsBindingObserver {
                             Positioned(
                                 bottom: 15,
                                 child: _BottomPanel(
-                                  screenState: screenState,
-                                  error: error,
-                                  onOneFrame: () => _onOneFrame(constraints),
-                                  onPlay: () => _onPlay(constraints),
-                                  onPlayLongTap: () {
-                                    // reset posotion and start over
-                                    position = 0;
-                                    stopAt = 0.0;
-                                    _onPlay(constraints);
-                                  },
-                                  onPlayDoubleTap: () {
-                                    position = 0;
-                                    stopAt = 3.0;
-                                    _onPlay(constraints);
-                                  },
-                                  onPause: () => _stop(),
-                                ))
+                                    screenState: screenState,
+                                    error: error,
+                                    onOneFrame: () => _onOneFrame(constraints),
+                                    onPlay: () => _onPlay(constraints),
+                                    onPlayLongTap: () {
+                                      // reset posotion and start over
+                                      position = 0;
+                                      stopAt = 0.0;
+                                      _onPlay(constraints);
+                                    },
+                                    onPlayDoubleTap: () {
+                                      position = 0;
+                                      stopAt = 3.0;
+                                      _onPlay(constraints);
+                                    },
+                                    onPause: () => _stop(),
+                                    onPythonReload: () {
+                                      error = '';
+                                      _setScreenState(ScreenStates.notReady);
+                                      pyInitResult = initPy();
+                                      _onPyLoaded();
+                                    }))
                           ]),
                     ))));
+  }
+
+  void _onPyLoaded() {
+    pyInitResult.then((v) {
+      _setScreenState(ScreenStates.ready);
+    }, onError: (error, stackTrace) {
+      setState(() => this.error = error.toString());
+    });
   }
 
   void _stop() {
@@ -276,7 +286,8 @@ class _BottomPanel extends StatelessWidget {
       required this.onPlay,
       required this.onPlayLongTap,
       required this.onPlayDoubleTap,
-      required this.onPause});
+      required this.onPause,
+      required this.onPythonReload});
 
   final ScreenStates screenState;
   final String error;
@@ -285,6 +296,7 @@ class _BottomPanel extends StatelessWidget {
   final Function onPlayLongTap;
   final Function onPlayDoubleTap;
   final Function onPause;
+  final Function onPythonReload;
 
   @override
   Widget build(BuildContext context) {
@@ -328,15 +340,26 @@ class _BottomPanel extends StatelessWidget {
                                       offset: Offset(0, 0),
                                       blurRadius: 0)
                                 ],
-                                //contentDyOffset: -60,
                                 transition: PopoverTransition.other,
                                 transitionDuration:
                                     const Duration(milliseconds: 100),
-                                bodyBuilder: (context) =>
-                                    _PanelPopup(statusText: _getStatusText()),
+                                bodyBuilder: (context) => error.isNotEmpty
+                                    ? Column(
+                                        children: [
+                                          Text('Error: $error'),
+                                          ElevatedButton(
+                                            onPressed: () {
+                                              onPythonReload();
+                                              Navigator.of(context).pop();
+                                            },
+                                            child: const Text('Reload'),
+                                          ),
+                                        ],
+                                      )
+                                    : _PanelPopup(statusText: _getStatusText()),
                                 direction: PopoverDirection.bottom,
                                 width: 380,
-                                height: 260,
+                                height: 225,
                               );
                             },
                           ),
@@ -408,80 +431,87 @@ class _PanelPopupState extends State<_PanelPopup> {
             borderRadius: const BorderRadius.all(Radius.circular(10)),
             child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Column(children: [
-                  Text.rich(widget.statusText),
-                  Column(
-                    children: [
-                      SizedBox(
-                          height: 36,
-                          child: RadioListTile<service.FetchModes>(
-                            dense: true,
-                            contentPadding: EdgeInsets.zero,
-                            title: const Text('Use "repeated int32" stream',
-                                textScaleFactor: 1.1),
-                            value: service.FetchModes.grpcRepeatedInt32,
-                            groupValue: fetchMode,
-                            onChanged: (value) {
-                              setState(() {
-                                fetchMode = value as service.FetchModes;
-                              });
-                            },
-                          )),
-                      SizedBox(
-                          height: 36,
-                          child: RadioListTile<service.FetchModes>(
-                            dense: true,
-                            contentPadding: EdgeInsets.zero,
-                            title: const Text('Use "bytes" stream',
-                                textScaleFactor: 1.1),
-                            value: service.FetchModes.grpcBytes,
-                            groupValue: fetchMode,
-                            onChanged: (value) {
-                              setState(() {
-                                fetchMode = value as service.FetchModes;
-                              });
-                            },
-                          )),
-                      SizedBox(
-                        height: 36,
-                        child: RadioListTile<service.FetchModes>(
-                          dense: true,
-                          title: const Text(
-                            'Use Dart native implementation',
-                            textScaleFactor: 1.1,
-                          ),
-                          contentPadding: EdgeInsets.zero,
-                          value: service.FetchModes.dartUiThread,
-                          groupValue: fetchMode,
-                          onChanged: (value) {
-                            setState(() {
-                              fetchMode = value as service.FetchModes;
-                            });
-                          },
-                        ),
-                      ),
-                      SizedBox(
-                        height: 36,
-                        child: RadioListTile<service.FetchModes>(
-                          dense: true,
-                          title: const Text(
-                            'Use Dart Isolates implementation',
-                            textScaleFactor: 1.1,
-                          ),
-                          contentPadding: EdgeInsets.zero,
-                          value: service.FetchModes.dartIsolates,
-                          groupValue: fetchMode,
-                          onChanged: (value) {
-                            setState(() {
-                              fetchMode = value as service.FetchModes;
-                            });
-                          },
-                        ),
-                      ),
-                    ],
-                  )
-                ]))));
+                child: Theme(
+                    data: ThemeData(
+                        scrollbarTheme: const ScrollbarThemeData(
+                            thumbVisibility: MaterialStatePropertyAll(true))),
+                    child: SingleChildScrollView(
+                      child: Column(children: [
+                        Text.rich(widget.statusText),
+                        Column(
+                          children: [
+                            _CustomRadioTile(
+                              title: 'Use "repeated int32" stream',
+                              value: service.FetchModes.grpcRepeatedInt32,
+                              groupValue: fetchMode,
+                              onChanged: (value) {
+                                setState(() {
+                                  fetchMode = value as service.FetchModes;
+                                });
+                              },
+                            ),
+                            _CustomRadioTile(
+                              title: 'Use "bytes" stream',
+                              value: service.FetchModes.grpcBytes,
+                              groupValue: fetchMode,
+                              onChanged: (value) {
+                                setState(() {
+                                  fetchMode = value as service.FetchModes;
+                                });
+                              },
+                            ),
+                            _CustomRadioTile(
+                              title: 'Use Dart native implementation',
+                              value: service.FetchModes.dartUiThread,
+                              groupValue: fetchMode,
+                              onChanged: (value) {
+                                setState(() {
+                                  fetchMode = value as service.FetchModes;
+                                });
+                              },
+                            ),
+                            _CustomRadioTile(
+                              title: 'Use Dart Isolates implementation',
+                              value: service.FetchModes.dartIsolates,
+                              groupValue: fetchMode,
+                              onChanged: (value) {
+                                setState(() {
+                                  fetchMode = value as service.FetchModes;
+                                });
+                              },
+                            ),
+                          ],
+                        )
+                      ]),
+                    )))));
   }
+}
+
+class _CustomRadioTile extends StatelessWidget {
+  final String title;
+  final service.FetchModes value;
+  final service.FetchModes groupValue;
+  final Function(service.FetchModes?) onChanged;
+
+  const _CustomRadioTile({
+    required this.title,
+    required this.value,
+    required this.groupValue,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: 36,
+        child: RadioListTile<service.FetchModes>(
+          dense: true,
+          contentPadding: EdgeInsets.zero,
+          title: Text(title, textScaleFactor: 1.1),
+          value: value,
+          groupValue: groupValue,
+          onChanged: onChanged,
+        ),
+      );
 }
 
 class _Fractals extends StatefulWidget {

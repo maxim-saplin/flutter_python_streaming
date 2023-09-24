@@ -1,4 +1,4 @@
-// v2, v1 parallelized via IsolatePool
+// v3, v2 with Uint8List
 
 import 'dart:math';
 import 'package:isolate_pool_2/isolate_pool_2.dart';
