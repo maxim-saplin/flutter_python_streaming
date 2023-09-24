@@ -461,8 +461,8 @@ class _PanelPopupState extends State<_PanelPopup> {
                               },
                             ),
                             _CustomRadioTile(
-                              title: 'Use Dart native implementation',
-                              value: service.FetchModes.dartUiThread,
+                              title: 'Use Dart native implementation V1',
+                              value: service.FetchModes.dartUiThreadV1,
                               groupValue: fetchMode,
                               onChanged: (value) {
                                 setState(() {
@@ -471,8 +471,18 @@ class _PanelPopupState extends State<_PanelPopup> {
                               },
                             ),
                             _CustomRadioTile(
-                              title: 'Use Dart Isolates implementation',
-                              value: service.FetchModes.dartIsolates,
+                              title: 'Use Dart Isolates implementation V2',
+                              value: service.FetchModes.dartIsolatesV2,
+                              groupValue: fetchMode,
+                              onChanged: (value) {
+                                setState(() {
+                                  fetchMode = value as service.FetchModes;
+                                });
+                              },
+                            ),
+                            _CustomRadioTile(
+                              title: 'Use Dart Isolates implementation V3',
+                              value: service.FetchModes.dartIsolatesV3,
                               groupValue: fetchMode,
                               onChanged: (value) {
                                 setState(() {

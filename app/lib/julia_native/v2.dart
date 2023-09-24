@@ -3,6 +3,7 @@
 import 'dart:math';
 import 'package:isolate_pool_2/isolate_pool_2.dart';
 import '../grpc_generated/set_generator.pb.dart';
+import 'common.dart';
 
 double _position = 0;
 bool _canceled = false;
@@ -18,7 +19,7 @@ late IsolatePool _pool;
 
 Stream<HeightMapBytesResponse> getSetAsHeightMapAsBytesStream(
     int widthPoints, int heightPoints, int threshold, double position) async* {
-  _pool = IsolatePool(8);
+  _pool = IsolatePool(numberOfIsolates);
   await _pool.start();
   _position = position;
   _canceled = false;
