@@ -29,3 +29,4 @@ doc/api/
 set_generator/__pycache__/julia_set.cpython-311.pyc
 set_generator/dist/
 .DS_Store
+set_generator/grpc_generated/__pycache__/set_generator_pb2_grpc.cpython-311.pyc

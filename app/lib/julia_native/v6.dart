@@ -59,7 +59,7 @@ Future<List<int>> _getSetAsHeightMapParallel(
   double xStart = -width / 2, yStart = -height / 2;
   List<double> im = _linspace(yStart, yStart + height, heightPoints);
 
-  int blockSize = (heightPoints / (pool.numberOfIsolates * 2)).ceil();
+  int blockSize = (heightPoints / (pool.numberOfIsolates * 4)).ceil();
 
   List<Future> futures = [];
 
