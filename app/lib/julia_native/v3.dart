@@ -50,7 +50,7 @@ Stream<HeightMapBytesResponse> getSetAsHeightMapAsBytesStream(
 
 // The following code changes the parallel implementation to iterate over N blocks (where N is the number of isolates), rather than individual rows.
 
-Future<List<int>> _getSetAsHeightMapParallel(
+Future<Uint8List> _getSetAsHeightMapParallel(
     int widthPoints, int heightPoints, IsolatePool pool, int threshold) async {
   var list = Uint8List(widthPoints * heightPoints);
 
@@ -64,7 +64,7 @@ Future<List<int>> _getSetAsHeightMapParallel(
 
   for (var i = 0; i < heightPoints; i += blockSize) {
     futures.add(pool
-        .scheduleJob<List<int>>(GetBlockJob(
+        .scheduleJob<Uint8List>(GetBlockJob(
             widthPoints: widthPoints,
             heightPoints: heightPoints,
             width: width,
@@ -106,8 +106,8 @@ class GetBlockJob extends PooledJob<List<int>> {
   final double position;
 
   @override
-  Future<List<int>> job() async {
-    List<int> result = List<int>.filled(widthPoints * im.length, 0);
+  Future<Uint8List> job() async {
+    Uint8List result = Uint8List(widthPoints * im.length);
 
     List<double> re = _linspace(xStart, xStart + width, widthPoints);
 
