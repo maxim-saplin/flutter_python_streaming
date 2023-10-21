@@ -533,6 +533,16 @@ class _PanelPopupState extends State<_PanelPopup> {
                                     });
                                   },
                                 ),
+                                _CustomRadioTile(
+                                  title: 'Use Dart Isolates implementation V7',
+                                  value: service.FetchModes.dartIsolatesV7,
+                                  groupValue: fetchMode,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      fetchMode = value as service.FetchModes;
+                                    });
+                                  },
+                                ),
                               ],
                             )
                           ]),

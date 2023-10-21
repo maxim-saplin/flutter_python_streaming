@@ -8,6 +8,7 @@ import 'julia_native/v3.dart' as v3;
 import 'julia_native/v4.dart' as v4;
 import 'julia_native/v5.dart' as v5;
 import 'julia_native/v6.dart' as v6;
+import 'julia_native/v7.dart' as v7;
 
 enum FetchModes {
   grpcRepeatedInt32,
@@ -18,6 +19,7 @@ enum FetchModes {
   dartUiThreadV4,
   dartIsolatesV5,
   dartIsolatesV6,
+  dartIsolatesV7,
 }
 
 typedef CancelationToken = Function();
@@ -96,6 +98,11 @@ Future<HeightMapResponse> getSetAsHeightMap(
       stream = v6.getSetAsHeightMapAsBytesStream(
           widthPixels, heightPixels, iterationThreshold, startPosition);
       cancelationToken = () => v6.cancelSetGeneration();
+      break;
+    case FetchModes.dartIsolatesV7:
+      stream = v7.getSetAsHeightMapAsBytesStream(
+          widthPixels, heightPixels, iterationThreshold, startPosition);
+      cancelationToken = () => v7.cancelSetGeneration();
       break;
   }
 
